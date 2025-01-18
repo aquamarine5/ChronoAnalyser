@@ -1,5 +1,9 @@
 package org.aquamarine5.brainspark.chronoanalyser
 
+import android.app.job.JobInfo
+import android.app.job.JobScheduler
+import android.content.ComponentName
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -14,6 +18,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import org.aquamarine5.brainspark.chronoanalyser.ui.theme.ChronoAnalyserTheme
 
 class MainActivity : ComponentActivity() {
+    private val permissionController=PermissionController(this)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -27,7 +32,24 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+        if(!permissionController.hasUsageStatsPermission()){
+            permissionController.requestUsageStatsPermission()
+        }else{
+            startScheduledJob(this)
+        }
     }
+}
+
+fun startScheduledJob(context: Context){
+    val componentName = ComponentName(context, ChronoJobService::class.java)
+    val jobInfo = JobInfo.Builder(1403, componentName)
+        .setPeriodic(3600000) // 1 hour in milliseconds
+        .setOverrideDeadline(3700000)
+        .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
+        .build()
+
+    val jobScheduler = context.getSystemService(Context.JOB_SCHEDULER_SERVICE) as JobScheduler
+    jobScheduler.schedule(jobInfo)
 }
 
 @Composable
