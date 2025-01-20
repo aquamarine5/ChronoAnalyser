@@ -5,6 +5,8 @@ import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.drawable.Drawable
+import org.aquamarine5.brainspark.chronoanalyser.data.ChronoDatabase
+import org.aquamarine5.brainspark.chronoanalyser.data.entity.ChronoDayRecordEntity
 import java.util.concurrent.TimeUnit
 
 class ChronoUsageAnalyser {
@@ -62,7 +64,20 @@ class ChronoUsageAnalyser {
     }
 
     fun installPreviousRecords(context: Context){
+        val db = ChronoDatabase.getInstance(context)
+        val dayRecordDao = db.chronoDayRecordDAO()
 
+        val dailyRecords = getRecordsDailyIntervalByDays(context, 30)
+        for ((packageName, yearlyUsage) in dailyRecords) {
+            for ((year, monthlyUsage) in yearlyUsage) {
+                for ((month, dailyUsage) in monthlyUsage) {
+                    for ((day, totalTime) in dailyUsage) {
+                        val record = ChronoDayRecordEntity(packageName, totalTime, year, month, day)
+                        dayRecordDao.insertDayRecord(record)
+                    }
+                }
+            }
+        }
     }
 
     private fun getAppName(context: Context, packageName: String): String {

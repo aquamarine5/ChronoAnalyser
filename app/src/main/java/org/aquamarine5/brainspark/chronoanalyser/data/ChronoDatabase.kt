@@ -8,8 +8,10 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.sqlite.db.SupportSQLiteOpenHelper
+import org.aquamarine5.brainspark.chronoanalyser.MainActivity
 import org.aquamarine5.brainspark.chronoanalyser.data.dao.ChronoAppDAO
 import org.aquamarine5.brainspark.chronoanalyser.data.dao.ChronoConfigDAO
+import org.aquamarine5.brainspark.chronoanalyser.data.dao.ChronoDayRecordDAO
 import org.aquamarine5.brainspark.chronoanalyser.data.dao.ChronoHourRecordDAO
 import org.aquamarine5.brainspark.chronoanalyser.data.entity.ChronoAppEntity
 import org.aquamarine5.brainspark.chronoanalyser.data.entity.ChronoConfigEntity
@@ -37,14 +39,13 @@ abstract class ChronoDatabase:RoomDatabase() {
                         ChronoDatabase::class.java,
                         "chrono.db"
                     )
-                        .addCallback(object : RoomDatabase.Callback() {
+                        .addCallback(object : Callback() {
                             override fun onCreate(db: SupportSQLiteDatabase) {
                                 super.onCreate(db)
                                 val configDAO= INSTANCE!!.chronoConfigDAO()
                                 configDAO.insertDefaultConfig(ChronoConfigEntity(
                                     Timestamp(1),false
                                 ))
-
                             }
                         })
                         .allowMainThreadQueries()
@@ -58,5 +59,5 @@ abstract class ChronoDatabase:RoomDatabase() {
     abstract fun chronoHourRecordDAO(): ChronoHourRecordDAO
     abstract fun chronoConfigDAO(): ChronoConfigDAO
     abstract fun chronoAppDAO(): ChronoAppDAO
-    abstract fun chronoDayRecordDAO():ChronoDayRecordEntity
+    abstract fun chronoDayRecordDAO(): ChronoDayRecordDAO
 }

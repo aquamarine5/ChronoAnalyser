@@ -35,29 +35,20 @@ class MainActivity : ComponentActivity() {
         if(!permissionController.hasUsageStatsPermission()){
             permissionController.requestUsageStatsPermission()
         }else{
-            startScheduledJob(this)
+            startScheduledJob()
         }
     }
-}
+    private fun startScheduledJob(){
+        val componentName = ComponentName(this, ChronoJobService::class.java)
+        val jobInfo = JobInfo.Builder(1403, componentName)
+            .setPeriodic(3600000) // 1 hour in milliseconds
+            .setOverrideDeadline(3700000)
+            .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
+            .build()
 
-fun startScheduledJob(context: Context){
-    val componentName = ComponentName(context, ChronoJobService::class.java)
-    val jobInfo = JobInfo.Builder(1403, componentName)
-        .setPeriodic(3600000) // 1 hour in milliseconds
-        .setOverrideDeadline(3700000)
-        .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
-        .build()
-
-    val jobScheduler = context.getSystemService(Context.JOB_SCHEDULER_SERVICE) as JobScheduler
-    jobScheduler.schedule(jobInfo)
-}
-
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
+        val jobScheduler = getSystemService(Context.JOB_SCHEDULER_SERVICE) as JobScheduler
+        jobScheduler.schedule(jobInfo)
+    }
 }
 
 @Preview(showBackground = true)
