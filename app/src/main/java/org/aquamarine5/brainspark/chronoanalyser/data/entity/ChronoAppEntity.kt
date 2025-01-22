@@ -8,5 +8,6 @@ import androidx.room.PrimaryKey
 data class ChronoAppEntity(
     @PrimaryKey
     val packageName:String,
-    val packageLabel:String
+    val packageLabel:String,
+    val usageTime:Long
 )

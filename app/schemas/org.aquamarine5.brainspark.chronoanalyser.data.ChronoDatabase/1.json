@@ -2,106 +2,22 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "703bb17395c4cb513dda96d4f001b251",
+    "identityHash": "7d5fc7b44c08e77e819f9b14d15b65e2",
     "entities": [
       {
-        "tableName": "hour_records",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`packageName` TEXT NOT NULL, `usingTime` INTEGER NOT NULL, `year` INTEGER NOT NULL, `month` INTEGER NOT NULL, `day` INTEGER NOT NULL, `hour` INTEGER NOT NULL)",
-        "fields": [
-          {
-            "fieldPath": "packageName",
-            "columnName": "packageName",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "usingTime",
-            "columnName": "usingTime",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "year",
-            "columnName": "year",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "month",
-            "columnName": "month",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "day",
-            "columnName": "day",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "hour",
-            "columnName": "hour",
-            "affinity": "INTEGER",
-            "notNull": true
-          }
-        ],
-        "primaryKey": {
-          "autoGenerate": false,
-          "columnNames": []
-        },
-        "indices": [],
-        "foreignKeys": []
-      },
-      {
-        "tableName": "ChronoDayRecordEntity",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`packageName` TEXT NOT NULL, `usingTime` INTEGER NOT NULL, `year` INTEGER NOT NULL, `month` INTEGER NOT NULL, `day` INTEGER NOT NULL)",
-        "fields": [
-          {
-            "fieldPath": "packageName",
-            "columnName": "packageName",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "usingTime",
-            "columnName": "usingTime",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "year",
-            "columnName": "year",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "month",
-            "columnName": "month",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "day",
-            "columnName": "day",
-            "affinity": "INTEGER",
-            "notNull": true
-          }
-        ],
-        "primaryKey": {
-          "autoGenerate": false,
-          "columnNames": []
-        },
-        "indices": [],
-        "foreignKeys": []
-      },
-      {
         "tableName": "config",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`lastUpdateTime` TEXT NOT NULL, `isInstalled` INTEGER NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`userid` TEXT NOT NULL, `lastUpdateTime` INTEGER NOT NULL, `isInstalled` INTEGER NOT NULL, PRIMARY KEY(`userid`))",
         "fields": [
+          {
+            "fieldPath": "userid",
+            "columnName": "userid",
+            "affinity": "TEXT",
+            "notNull": true
+          },
           {
             "fieldPath": "lastUpdateTime",
             "columnName": "lastUpdateTime",
-            "affinity": "TEXT",
+            "affinity": "INTEGER",
             "notNull": true
           },
           {
@@ -113,14 +29,16 @@
         ],
         "primaryKey": {
           "autoGenerate": false,
-          "columnNames": []
+          "columnNames": [
+            "userid"
+          ]
         },
         "indices": [],
         "foreignKeys": []
       },
       {
         "tableName": "apps",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`packageName` TEXT NOT NULL, `packageLabel` TEXT NOT NULL, PRIMARY KEY(`packageName`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`packageName` TEXT NOT NULL, `packageLabel` TEXT NOT NULL, `usageTime` INTEGER NOT NULL, PRIMARY KEY(`packageName`))",
         "fields": [
           {
             "fieldPath": "packageName",
@@ -132,6 +50,12 @@
             "fieldPath": "packageLabel",
             "columnName": "packageLabel",
             "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "usageTime",
+            "columnName": "usageTime",
+            "affinity": "INTEGER",
             "notNull": true
           }
         ],
@@ -148,7 +72,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '703bb17395c4cb513dda96d4f001b251')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '7d5fc7b44c08e77e819f9b14d15b65e2')"
     ]
   }
 }

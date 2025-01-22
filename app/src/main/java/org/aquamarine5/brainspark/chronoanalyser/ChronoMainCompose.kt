@@ -1,11 +1,20 @@
 package org.aquamarine5.brainspark.chronoanalyser
 
 import android.content.Context
+import android.content.pm.PackageManager
+import android.graphics.drawable.BitmapDrawable
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.Button
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -15,19 +24,21 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import kotlinx.coroutines.launch
-import org.aquamarine5.brainspark.chronoanalyser.data.ChronoDatabase
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.unit.dp
+import java.util.Locale
 
-class ChronoMainCompose(private val context: Context) {
+class ChronoMainCompose(
+    private val context: Context,
+    private val usageAnalyser: ChronoUsageAnalyser
+) {
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun DrawMainContent() {
-        val isInstalled by remember{
-            mutableStateOf(ChronoDatabase.getInstance(context).chronoConfigDAO().getConfig()!!.isInstalled)
-        }
         Scaffold(
             topBar = {
                 TopAppBar(
@@ -41,36 +52,92 @@ class ChronoMainCompose(private val context: Context) {
             },
             modifier = Modifier.fillMaxSize()
         ) { innerPadding ->
-            when(isInstalled){
-                false->{
-                    WelcomePage(innerPadding)
-                }
-                true->{
+            Column(
+                modifier = Modifier.padding(innerPadding)
+            ) {
+                StartupPage()
+            }
+        }
+    }
 
-                }
+
+    @Composable
+    fun StartupPage() {
+        var isInstalled by remember { mutableStateOf(false) }
+        var loadUsageData by remember { mutableStateOf<Map<String, Long>?>(null) }
+
+        if (isInstalled) {
+            AnalysisPage(loadUsageData!!)
+        } else {
+            FlowLinearProgressIndicator(
+                usageAnalyser.loadUsagePerApplicationFlow(context)
+            ) { result ->
+                loadUsageData = result
+                isInstalled = true
             }
         }
     }
 
     @Composable
-    fun WelcomePage(innerPaddingValues: PaddingValues){
-        val isInstalling by remember { mutableStateOf(false) }
-        when(isInstalling){
-            false->{
-                Button(onClick={
-                    isInstalling=false
-                }){
+    fun AnalysisPage(loadUsageData: Map<String, Long>) {
+        val maxUsageTime = loadUsageData.values.maxOrNull() ?: 0L
 
+        Column(modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)) {
+            loadUsageData.forEach { (packageName, usageTime) ->
+                val appName = getAppName(context, packageName)
+                val appIcon = getAppIcon(context, packageName)
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Image(
+                        bitmap = appIcon,
+                        contentDescription = appName,
+                        modifier = Modifier.size(48.dp)
+                    )
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(text = appName, style = MaterialTheme.typography.bodyLarge)
+                        Text(text = "Usage time: ${formatTime(usageTime)}", style = MaterialTheme.typography.bodySmall)
+                        LinearProgressIndicator(
+                            progress = { usageTime / maxUsageTime.toFloat() },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
                 }
             }
-            true->{
-
-            }
         }
-        Button() { }
-        val scope= rememberCoroutineScope()
-        scope.launch {
+    }
 
+    private fun formatTime(milliseconds: Long): String {
+        val hours = milliseconds / 3600000
+        val minutes = (milliseconds % 3600000) / 60000
+        val seconds = (milliseconds % 60000) / 1000
+        return String.format(Locale.SIMPLIFIED_CHINESE,"%02d:%02d:%02d", hours, minutes, seconds)
+    }
+
+    private fun getAppName(context: Context, packageName: String): String {
+        val packageManager = context.packageManager
+        return try {
+            val applicationInfo = packageManager.getApplicationInfo(packageName, 0)
+            packageManager.getApplicationLabel(applicationInfo).toString()
+        } catch (e: PackageManager.NameNotFoundException) {
+            packageName
+        }
+    }
+
+    private fun getAppIcon(context: Context, packageName: String): ImageBitmap {
+        val packageManager = context.packageManager
+        return try {
+            val applicationInfo = packageManager.getApplicationInfo(packageName, 0)
+            (packageManager.getApplicationIcon(applicationInfo) as BitmapDrawable).bitmap.asImageBitmap()
+        } catch (e: PackageManager.NameNotFoundException) {
+            ImageBitmap(1, 1) // Return a default empty bitmap in case of an error
         }
     }
 }
