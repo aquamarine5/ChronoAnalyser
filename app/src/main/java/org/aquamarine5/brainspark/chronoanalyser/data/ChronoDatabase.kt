@@ -34,16 +34,6 @@ abstract class ChronoDatabase:RoomDatabase() {
                         ChronoDatabase::class.java,
                         "chrono.db"
                     )
-                        .addCallback(object : Callback() {
-                            override fun onCreate(db: SupportSQLiteDatabase) {
-                                super.onCreate(db)
-                                val configDAO= INSTANCE!!.chronoConfigDAO()
-                                configDAO.insertDefaultConfig(ChronoConfigEntity(
-                                    Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID),1L,false
-                                ))
-                            }
-                        })
-                        .allowMainThreadQueries()
                         .build()
                 }
             }
