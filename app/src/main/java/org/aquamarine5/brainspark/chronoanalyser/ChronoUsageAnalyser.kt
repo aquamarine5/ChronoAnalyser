@@ -1,17 +1,15 @@
 package org.aquamarine5.brainspark.chronoanalyser
 
+import android.app.usage.UsageEvents
 import android.app.usage.UsageStats
 import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.pm.PackageManager
-import android.os.Build
-import android.text.format.DateUtils
 import android.util.Log
-import android.util.TimeUtils
-import kotlinx.coroutines.Dispatchers
+import androidx.core.content.ContextCompat.getSystemService
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.yield
 import org.aquamarine5.brainspark.chronoanalyser.data.ChronoDatabase
 import org.aquamarine5.brainspark.chronoanalyser.data.entity.ChronoAppEntity
@@ -19,62 +17,91 @@ import java.time.LocalDateTime
 import java.time.ZoneId
 import java.util.concurrent.TimeUnit
 
+
 class ChronoUsageAnalyser {
-    private fun getLongAgoTimestamp():Long{
-        val time = LocalDateTime.of(2025, 1, 11, 0, 0)
-        val zoneId = ZoneId.systemDefault()
-        return time.atZone(zoneId).toInstant().toEpochMilli()
+    companion object {
+        val classTag = this::class.simpleName
     }
-    fun loadUsagePerApplicationFlow(context: Context): FlowResult<Map<String, Long>> = flow {
+
+    fun loadUsageByStatsFlow(context: Context): FlowResult<Map<String, Long>> = flow {
         val outputData = mutableMapOf<String, Long>()
         val usageStatsManager = context.getSystemService(UsageStatsManager::class.java)
-        val beginTime = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(1)
         val endTime = System.currentTimeMillis()
-        Log.w("zxzx","zzzz")
-        val usageStatsList: List<UsageStats> = usageStatsManager.queryUsageStats(UsageStatsManager.INTERVAL_YEARLY, beginTime, endTime)
-        val listCount=usageStatsList.size.toFloat()
+        val beginTime = endTime - TimeUnit.DAYS.toMillis(365 * 2)
+        val usageStatsList: List<UsageStats> =
+            usageStatsManager.queryUsageStats(UsageStatsManager.INTERVAL_YEARLY, beginTime, endTime)
+        val listCount = usageStatsList.size.toFloat()
         for ((index, usageStats) in usageStatsList.withIndex()) {
             val packageName = usageStats.packageName
             val totalTimeInForeground = usageStats.totalTimeInForeground
+            outputData[packageName] =
+                outputData.getOrDefault(packageName, 0L) + totalTimeInForeground
+            emit(FlowResultUtil.progress(index / listCount))
+            yield()
+        }
+        emit(FlowResultUtil.resolve(outputData))
+    }
 
-            Log.w("Chronoz","$packageName $totalTimeInForeground")
-
-
-            outputData[packageName] = outputData.getOrDefault(packageName, 0L) + totalTimeInForeground
-            emit(FlowResultUtil.progress(index/listCount))
+    fun loadUsageByEventFlow(context: Context): FlowResult<Map<String, Long>> = flow {
+        val currTime = System.currentTimeMillis()
+        val mUsageStatsManager =
+            context.getSystemService(UsageStatsManager::class.java)
+        val usageEvents =
+            mUsageStatsManager!!.queryEvents(currTime - TimeUnit.DAYS.toMillis(7), currTime)
+        val eventUsage: MutableMap<String, Long> = HashMap()
+        val totalUsage: MutableMap<String, Long> = HashMap()
+        var lastApp = ""
+        val allCounts = 70000f
+        var currentCount = 0
+        var time: Long
+        while (usageEvents.hasNextEvent()) {
+            val currentEvent = UsageEvents.Event()
+            usageEvents.getNextEvent(currentEvent)
+            val currentProgress = currentCount / allCounts
+            val app = currentEvent.packageName
+            time = currentEvent.timeStamp
+            when(currentEvent.eventType){
+                UsageEvents.Event.ACTIVITY_RESUMED->{
+                    eventUsage[app] = time
+                    lastApp = app
+                }
+                UsageEvents.Event.ACTIVITY_PAUSED->{
+                    if (eventUsage.containsKey(app)) {
+                        if (totalUsage.containsKey(app))
+                            totalUsage[app] = totalUsage[app]!! + (time - eventUsage[app]!!)
+                        else
+                            totalUsage[app] = (time - eventUsage[app]!!)
+                    }
+                    eventUsage.remove(app)
+                }
+                12->{
+                    Log.w(classTag,"Notification received $app")
+                }
+            }
+            emit(FlowResultUtil.progress((if (currentProgress <= 1f) currentProgress else 1f)/2))
+            delay(100)
+            currentCount++
             yield()
         }
 
-        emit(FlowResultUtil.resolve(outputData))
+        if (eventUsage.containsKey(lastApp)) if (totalUsage.containsKey(lastApp)) totalUsage[lastApp] =
+            totalUsage[lastApp]!! + (System.currentTimeMillis() - eventUsage[lastApp]!!)
+        else totalUsage[lastApp] = (System.currentTimeMillis() - eventUsage[lastApp]!!)
+
+        val usageCount=totalUsage.size.toFloat()+1
+        val db=ChronoDatabase.getInstance(context)
+        val appDAO=db.chronoAppDAO()
+
+        for ((index,usage) in totalUsage.entries.withIndex()) {
+            appDAO.upsertApp(ChronoAppEntity(
+                usage.key,getAppName(context,usage.key),usage.value
+            ))
+            emit(FlowResultUtil.progress(0.5f+index/usageCount))
+            yield()
+        }
+
+        emit(FlowResultUtil.resolve(totalUsage))
     }
-//    fun loadUsagePerApplicationFlow(context: Context): FlowResult<Map<String,Long>> =flow{
-//        val outputData= mutableMapOf<String,Long>()
-//        val usageStatsManager=context.getSystemService(UsageStatsManager::class.java)
-//        Log.d("ChronoUsageAnalyser", "${System.currentTimeMillis()-TimeUnit.DAYS.toMillis(217)}: ${getLongAgoTimestamp()}")
-//        val usageData=usageStatsManager.queryAndAggregateUsageStats(
-//            System.currentTimeMillis()-TimeUnit.DAYS.toMillis(1)
-//            ,System.currentTimeMillis())
-//        val progressLength=usageData.size.toFloat()
-//        val db=ChronoDatabase.getInstance(context)
-//        val appDAO=db.chronoAppDAO()
-//        for ((index, usageApp) in usageData.entries.withIndex()) {
-//            val packageName=usageApp.key
-//            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-//                outputData[packageName] = -usageApp.value.totalTimeInForeground+usageApp.value.totalTimeVisible
-//            }
-//            Log.d("ChronoUsageAnalyser", "totalTimeVisibleloadUsagePerApplicationFlow: $packageName ${getAppName(context,packageName)} ${usageApp.value.totalTimeInForeground}")
-////            emit(FlowResultUtil.progress(index/progressLength/2))
-////            yield()
-////            withContext(Dispatchers.IO){
-////                appDAO.insertApp(ChronoAppEntity(
-////                    packageName,getAppName(context,packageName),usageApp.value.totalTimeInForeground
-////                ))
-////            }
-//            emit(FlowResultUtil.progress(index/progressLength))
-//            yield()
-//        }
-//        emit(FlowResultUtil.resolve(outputData))
-//    }
 
     private fun getAppName(context: Context, packageName: String): String {
         val packageManager = context.packageManager

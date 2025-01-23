@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -28,8 +29,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults.topAppBarColors
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -79,7 +83,7 @@ class ChronoMainCompose(
             Text("11")
         } else {
             FlowLinearProgressIndicator(
-                usageAnalyser.loadUsagePerApplicationFlow(context)
+                usageAnalyser.loadUsagePerApplicationByEventFlow(context)
             ) { result ->
                 loadUsageData = result
                 Log.i("ChronoMainCompose", "Usage data loaded: ${result}")
@@ -99,31 +103,35 @@ class ChronoMainCompose(
                 .fillMaxSize()
                 .padding(16.dp)
         ) {
-            items(sortedUsageData) { (packageName, usageTime) ->
+            itemsIndexed(sortedUsageData) { index,(packageName, usageTime) ->
                 val appName = getAppName(context, packageName)
                 val appIcon = getAppIcon(context, packageName)
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Image(
-                        bitmap = appIcon,
-                        contentDescription = appName,
-                        modifier = Modifier.size(48.dp)
-                    )
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(text = appName, style = MaterialTheme.typography.bodyLarge)
-                        Text(
-                            text = "Usage time: ${formatTime(usageTime)}",
-                            style = MaterialTheme.typography.bodySmall
+                key(index){
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Image(
+                            bitmap = appIcon,
+                            contentDescription = appName,
+                            modifier = Modifier.size(48.dp)
                         )
-                        LinearProgressIndicator(
-                            progress = { usageTime / maxUsageTime.toFloat() },
-                            modifier = Modifier.fillMaxWidth()
-                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(text = appName, style = MaterialTheme.typography.bodyLarge)
+                            Text(
+                                text = "Usage time: ${formatTime(usageTime)}",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                            LinearProgressIndicator(
+                                progress = { usageTime / maxUsageTime.toFloat() },
+                                modifier = Modifier.fillMaxWidth(),
+                                drawStopIndicator = {},
+                                gapSize = (-1).dp
+                            )
+                        }
                     }
                 }
             }

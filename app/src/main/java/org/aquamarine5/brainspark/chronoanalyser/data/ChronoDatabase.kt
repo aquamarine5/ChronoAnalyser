@@ -11,18 +11,14 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import androidx.sqlite.db.SupportSQLiteOpenHelper
 import org.aquamarine5.brainspark.chronoanalyser.MainActivity
 import org.aquamarine5.brainspark.chronoanalyser.data.dao.ChronoAppDAO
-import org.aquamarine5.brainspark.chronoanalyser.data.dao.ChronoConfigDAO
 import org.aquamarine5.brainspark.chronoanalyser.data.entity.ChronoAppEntity
-import org.aquamarine5.brainspark.chronoanalyser.data.entity.ChronoConfigEntity
 import java.sql.Timestamp
 
 @Database(
     entities = [
-        ChronoConfigEntity::class,
         ChronoAppEntity::class],
     version = 1)
 abstract class ChronoDatabase:RoomDatabase() {
-
     companion object{
         @Volatile
         private var INSTANCE: ChronoDatabase? = null
@@ -41,6 +37,5 @@ abstract class ChronoDatabase:RoomDatabase() {
         }
     }
 
-    abstract fun chronoConfigDAO(): ChronoConfigDAO
     abstract fun chronoAppDAO(): ChronoAppDAO
 }

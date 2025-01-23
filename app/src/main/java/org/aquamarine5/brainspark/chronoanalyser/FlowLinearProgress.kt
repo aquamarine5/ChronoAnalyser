@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -28,7 +29,7 @@ fun <T> FlowLinearProgressIndicator(
     color: Color = ProgressIndicatorDefaults.linearColor,
     trackColor: Color = ProgressIndicatorDefaults.linearTrackColor,
     strokeCap: StrokeCap = ProgressIndicatorDefaults.LinearStrokeCap,
-    gapSize: Dp = ProgressIndicatorDefaults.LinearIndicatorTrackGapSize,
+    gapSize: Dp = (-1).dp,
     onFinished: (result: T) -> Unit,
 ) {
     val scope= rememberCoroutineScope()
@@ -51,6 +52,7 @@ fun <T> FlowLinearProgressIndicator(
         color,
         trackColor,
         strokeCap,
-        gapSize
+        gapSize,
+        drawStopIndicator = {}
     )
 }
