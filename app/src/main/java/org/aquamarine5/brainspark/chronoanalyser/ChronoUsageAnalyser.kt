@@ -6,22 +6,17 @@ import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.pm.PackageManager
 import android.util.Log
-import androidx.core.content.ContextCompat.getSystemService
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.yield
+import org.aquamarine5.brainspark.chronoanalyser.data.ChronoConfigController
 import org.aquamarine5.brainspark.chronoanalyser.data.ChronoDatabase
 import org.aquamarine5.brainspark.chronoanalyser.data.entity.ChronoAppEntity
-import java.time.LocalDateTime
-import java.time.ZoneId
 import java.util.concurrent.TimeUnit
 
 
-class ChronoUsageAnalyser {
-    companion object {
-        val classTag = this::class.simpleName
-    }
+object ChronoUsageAnalyser {
+    private val classTag = this::class.simpleName
 
     fun loadUsageByStatsFlow(context: Context): FlowResult<Map<String, Long>> = flow {
         val outputData = mutableMapOf<String, Long>()
@@ -54,18 +49,22 @@ class ChronoUsageAnalyser {
         val allCounts = 70000f
         var currentCount = 0
         var time: Long
+        var addedNotificationCount = 0
+        var addedStartupCount = 0
+        var latestTime: Long? = null
         while (usageEvents.hasNextEvent()) {
             val currentEvent = UsageEvents.Event()
             usageEvents.getNextEvent(currentEvent)
             val currentProgress = currentCount / allCounts
             val app = currentEvent.packageName
             time = currentEvent.timeStamp
-            when(currentEvent.eventType){
-                UsageEvents.Event.ACTIVITY_RESUMED->{
+            when (currentEvent.eventType) {
+                UsageEvents.Event.ACTIVITY_RESUMED -> {
                     eventUsage[app] = time
                     lastApp = app
                 }
-                UsageEvents.Event.ACTIVITY_PAUSED->{
+
+                UsageEvents.Event.ACTIVITY_PAUSED -> {
                     if (eventUsage.containsKey(app)) {
                         if (totalUsage.containsKey(app))
                             totalUsage[app] = totalUsage[app]!! + (time - eventUsage[app]!!)
@@ -73,12 +72,15 @@ class ChronoUsageAnalyser {
                             totalUsage[app] = (time - eventUsage[app]!!)
                     }
                     eventUsage.remove(app)
+                    latestTime = time
                 }
-                12->{
-                    Log.w(classTag,"Notification received $app")
+
+                12 -> {
+                    Log.w(classTag, "Notification received $app")
+                    addedNotificationCount++
                 }
             }
-            emit(FlowResultUtil.progress((if (currentProgress <= 1f) currentProgress else 1f)/2))
+            emit(FlowResultUtil.progress((if (currentProgress <= 1f) currentProgress else 1f) / 2))
             delay(100)
             currentCount++
             yield()
@@ -88,18 +90,27 @@ class ChronoUsageAnalyser {
             totalUsage[lastApp]!! + (System.currentTimeMillis() - eventUsage[lastApp]!!)
         else totalUsage[lastApp] = (System.currentTimeMillis() - eventUsage[lastApp]!!)
 
-        val usageCount=totalUsage.size.toFloat()+1
-        val db=ChronoDatabase.getInstance(context)
-        val appDAO=db.chronoAppDAO()
+        val usageCount = totalUsage.size.toFloat() + 1
+        val db = ChronoDatabase.getInstance(context)
+        val lastUpdateTimeProxy = ChronoConfigController.lastUpdateTime(context)
+        val appDAO = db.chronoAppDAO()
 
-        for ((index,usage) in totalUsage.entries.withIndex()) {
-            appDAO.upsertApp(ChronoAppEntity(
-                usage.key,getAppName(context,usage.key),usage.value
-            ))
-            emit(FlowResultUtil.progress(0.5f+index/usageCount))
+        for ((index, usage) in totalUsage.entries.withIndex()) {
+            val rawApp = appDAO.getAppByPackageName(usage.key)
+            if (rawApp == null)
+                appDAO.upsertApp(
+                    ChronoAppEntity(
+                        usage.key, getAppName(context, usage.key), usage.value
+                    )
+                )
+            else {
+                appDAO.addAppCounts(usage.key, usage.value,addedNotificationCount,addedStartupCount)
+            }
+            emit(FlowResultUtil.progress(0.5f + index / usageCount))
             yield()
         }
-
+        if (latestTime != null)
+            lastUpdateTimeProxy.setValue(latestTime)
         emit(FlowResultUtil.resolve(totalUsage))
     }
 

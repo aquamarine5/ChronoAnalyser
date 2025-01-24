@@ -1,17 +1,14 @@
 package org.aquamarine5.brainspark.chronoanalyser.data
 
 import android.content.SharedPreferences
-import kotlin.properties.ReadWriteProperty
-import kotlin.reflect.KProperty
 
-class ChronoConfigDelegate<T>(
+class ChronoConfigProxy<T>(
     private val sharedPreferences: SharedPreferences,
     private val key: String,
     private val defaultValue: T
-) : ReadWriteProperty<ChronoConfigController, T> {
-
+){
     @Suppress("UNCHECKED_CAST")
-    override fun getValue(thisRef: ChronoConfigController, property: KProperty<*>): T {
+    fun getValue(): T {
         return when (defaultValue) {
             is Long -> sharedPreferences.getLong(key, defaultValue) as T
             is String -> sharedPreferences.getString(key, defaultValue) as T
@@ -22,7 +19,7 @@ class ChronoConfigDelegate<T>(
         }
     }
 
-    override fun setValue(thisRef: ChronoConfigController, property: KProperty<*>, value: T) {
+    fun setValue(value: T) {
         with(sharedPreferences.edit()) {
             when (value) {
                 is Long -> putLong(key, value)

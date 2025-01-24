@@ -45,8 +45,7 @@ import androidx.compose.ui.unit.dp
 import java.util.Locale
 
 class ChronoMainCompose(
-    private val context: Context,
-    private val usageAnalyser: ChronoUsageAnalyser
+    private val context: Context
 ) {
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
@@ -83,7 +82,7 @@ class ChronoMainCompose(
             Text("11")
         } else {
             FlowLinearProgressIndicator(
-                usageAnalyser.loadUsagePerApplicationByEventFlow(context)
+                ChronoUsageAnalyser.loadUsageByEventFlow(context)
             ) { result ->
                 loadUsageData = result
                 Log.i("ChronoMainCompose", "Usage data loaded: ${result}")

@@ -19,18 +19,18 @@ import org.aquamarine5.brainspark.chronoanalyser.data.ChronoDatabase
 import org.aquamarine5.brainspark.chronoanalyser.ui.theme.ChronoAnalyserTheme
 
 class MainActivity : ComponentActivity() {
-    private val permissionController = PermissionController(this)
+    private val permissionController = PermissionController
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             ChronoAnalyserTheme {
-                ChronoMainCompose(this, ChronoUsageAnalyser())
+                ChronoMainCompose(this)
                     .DrawMainContent()
             }
         }
-        if (!permissionController.hasUsageStatsPermission()) {
-            permissionController.requestUsageStatsPermission()
+        if (!permissionController.hasUsageStatsPermission(this)) {
+            permissionController.requestUsageStatsPermission(this)
         } else {
             //startScheduledJob()
         }

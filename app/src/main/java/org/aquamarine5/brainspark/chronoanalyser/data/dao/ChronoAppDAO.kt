@@ -18,6 +18,9 @@ interface ChronoAppDAO{
     @Upsert
     fun upsertApp(app: ChronoAppEntity)
 
+    @Query("UPDATE apps SET usageTime = usageTime + :addUsageTime, notificationCount = notificationCount + :addNotificationCount, startupCount = startupCount + :addStartupCount WHERE packageName = :packageName")
+    fun addAppCounts(packageName: String, addUsageTime:Long,addNotificationCount:Int,addStartupCount:Int)
+
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     fun insertApp(app:ChronoAppEntity)
 
