@@ -6,8 +6,10 @@ import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.pm.PackageManager
 import android.util.Log
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.yield
 import org.aquamarine5.brainspark.chronoanalyser.data.ChronoConfigController
 import org.aquamarine5.brainspark.chronoanalyser.data.ChronoDatabase
@@ -38,15 +40,18 @@ object ChronoUsageAnalyser {
     }
 
     fun loadUsageByEventFlow(context: Context): FlowResult<Map<String, Long>> = flow {
+        val db = ChronoDatabase.getInstance(context)
+        val lastUpdateTimeProxy = ChronoConfigController.lastUpdateTime(context)
+        val appDAO = db.chronoAppDAO()
         val currTime = System.currentTimeMillis()
         val mUsageStatsManager =
             context.getSystemService(UsageStatsManager::class.java)
         val usageEvents =
-            mUsageStatsManager!!.queryEvents(currTime - TimeUnit.DAYS.toMillis(7), currTime)
+            mUsageStatsManager!!.queryEvents(lastUpdateTimeProxy.getValue(), currTime)
         val eventUsage: MutableMap<String, Long> = HashMap()
         val totalUsage: MutableMap<String, Long> = HashMap()
         var lastApp = ""
-        val allCounts = 70000f
+        val allCounts = 700f
         var currentCount = 0
         var time: Long
         var addedNotificationCount = 0
@@ -81,7 +86,7 @@ object ChronoUsageAnalyser {
                 }
             }
             emit(FlowResultUtil.progress((if (currentProgress <= 1f) currentProgress else 1f) / 2))
-            delay(100)
+            Log.d(classTag,"progress: $currentProgress")
             currentCount++
             yield()
         }
@@ -91,26 +96,26 @@ object ChronoUsageAnalyser {
         else totalUsage[lastApp] = (System.currentTimeMillis() - eventUsage[lastApp]!!)
 
         val usageCount = totalUsage.size.toFloat() + 1
-        val db = ChronoDatabase.getInstance(context)
-        val lastUpdateTimeProxy = ChronoConfigController.lastUpdateTime(context)
-        val appDAO = db.chronoAppDAO()
 
         for ((index, usage) in totalUsage.entries.withIndex()) {
-            val rawApp = appDAO.getAppByPackageName(usage.key)
-            if (rawApp == null)
-                appDAO.upsertApp(
-                    ChronoAppEntity(
-                        usage.key, getAppName(context, usage.key), usage.value
+            withContext(Dispatchers.IO){
+                val rawApp = appDAO.getAppByPackageName(usage.key)
+                if (rawApp == null)
+                    appDAO.upsertApp(
+                        ChronoAppEntity(
+                            usage.key, getAppName(context, usage.key), usage.value
+                        )
                     )
-                )
-            else {
-                appDAO.addAppCounts(usage.key, usage.value,addedNotificationCount,addedStartupCount)
+                else {
+                    appDAO.addAppCounts(usage.key, usage.value,addedNotificationCount,addedStartupCount)
+                }
             }
             emit(FlowResultUtil.progress(0.5f + index / usageCount))
             yield()
         }
-        if (latestTime != null)
+        latestTime?.let {
             lastUpdateTimeProxy.setValue(latestTime)
+        }
         emit(FlowResultUtil.resolve(totalUsage))
     }
 

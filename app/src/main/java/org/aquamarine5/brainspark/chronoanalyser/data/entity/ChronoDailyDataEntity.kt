@@ -1,14 +1,13 @@
 package org.aquamarine5.brainspark.chronoanalyser.data.entity
 
 import androidx.room.Entity
-import androidx.room.PrimaryKey
 import java.util.Date
 
-@Entity(tableName = "hourly_data")
-data class ChronoHourlyDataEntity(
-    @PrimaryKey
+@Entity(tableName = "hourly_data", primaryKeys = [
+    "packageName","date"
+])
+data class ChronoDailyDataEntity(
     val packageName:String,
-    @PrimaryKey
     val date:Date,
     val notificationCount:Int=0,
     val usageTime:Long=0L,

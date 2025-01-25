@@ -1,5 +1,6 @@
 package org.aquamarine5.brainspark.chronoanalyser
 
+import android.util.Log
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ProgressIndicatorDefaults
@@ -17,9 +18,11 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun <T> FlowLinearProgressIndicator(
@@ -31,14 +34,15 @@ fun <T> FlowLinearProgressIndicator(
     gapSize: Dp = (-1).dp,
     onFinished: (result: T) -> Unit,
 ) {
-    val scope= rememberCoroutineScope()
+    val scope = rememberCoroutineScope()
     var progress by remember { mutableFloatStateOf(0f) }
 
     LaunchedEffect(progressFlow) {
         scope.launch {
             progressFlow.collect { (value, result) ->
                 progress = value
-                if (result != null) {
+                Log.d("FlowLinearProgress", "Progress: $value")
+                result?.let {
                     onFinished(result)
                 }
             }

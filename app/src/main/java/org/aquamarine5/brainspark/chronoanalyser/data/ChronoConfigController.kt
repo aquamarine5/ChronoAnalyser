@@ -15,6 +15,6 @@ object ChronoConfigController {
         ChronoConfigProxy(
             getSharedPreferences(context),
             "lastUpdateTime",
-            0L
+            1172981711250L
         )
 }

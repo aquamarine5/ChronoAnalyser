@@ -4,6 +4,6 @@ import androidx.room.Dao
 import androidx.room.PrimaryKey
 
 @Dao
-interface ChronoHourlyDataDAO {
+interface ChronoDailyDataDAO {
 
 }

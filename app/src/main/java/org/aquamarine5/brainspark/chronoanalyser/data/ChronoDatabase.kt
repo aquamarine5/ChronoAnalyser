@@ -1,26 +1,19 @@
 package org.aquamarine5.brainspark.chronoanalyser.data
 
 import android.content.Context
-import android.provider.Settings
 import androidx.room.Database
-import androidx.room.DatabaseConfiguration
-import androidx.room.InvalidationTracker
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
-import androidx.sqlite.db.SupportSQLiteDatabase
-import androidx.sqlite.db.SupportSQLiteOpenHelper
-import org.aquamarine5.brainspark.chronoanalyser.MainActivity
 import org.aquamarine5.brainspark.chronoanalyser.data.dao.ChronoAppDAO
-import org.aquamarine5.brainspark.chronoanalyser.data.dao.ChronoHourlyDataDAO
+import org.aquamarine5.brainspark.chronoanalyser.data.dao.ChronoDailyDataDAO
 import org.aquamarine5.brainspark.chronoanalyser.data.entity.ChronoAppEntity
-import org.aquamarine5.brainspark.chronoanalyser.data.entity.ChronoHourlyDataEntity
-import java.sql.Timestamp
+import org.aquamarine5.brainspark.chronoanalyser.data.entity.ChronoDailyDataEntity
 
 @Database(
     entities = [
         ChronoAppEntity::class,
-        ChronoHourlyDataEntity::class
+        ChronoDailyDataEntity::class
                ],
     version = 1)
 @TypeConverters(
@@ -46,5 +39,5 @@ abstract class ChronoDatabase:RoomDatabase() {
     }
 
     abstract fun chronoAppDAO(): ChronoAppDAO
-    abstract fun chronoHourlyDataDAO():ChronoHourlyDataDAO
+    abstract fun chronoHourlyDataDAO():ChronoDailyDataDAO
 }

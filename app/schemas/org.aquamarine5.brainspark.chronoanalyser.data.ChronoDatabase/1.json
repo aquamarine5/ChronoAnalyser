@@ -2,43 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "7d5fc7b44c08e77e819f9b14d15b65e2",
+    "identityHash": "63b45542e4af3fd7b6471b6a76c76700",
     "entities": [
       {
-        "tableName": "config",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`userid` TEXT NOT NULL, `lastUpdateTime` INTEGER NOT NULL, `isInstalled` INTEGER NOT NULL, PRIMARY KEY(`userid`))",
-        "fields": [
-          {
-            "fieldPath": "userid",
-            "columnName": "userid",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "lastUpdateTime",
-            "columnName": "lastUpdateTime",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "isInstalled",
-            "columnName": "isInstalled",
-            "affinity": "INTEGER",
-            "notNull": true
-          }
-        ],
-        "primaryKey": {
-          "autoGenerate": false,
-          "columnNames": [
-            "userid"
-          ]
-        },
-        "indices": [],
-        "foreignKeys": []
-      },
-      {
         "tableName": "apps",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`packageName` TEXT NOT NULL, `packageLabel` TEXT NOT NULL, `usageTime` INTEGER NOT NULL, PRIMARY KEY(`packageName`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`packageName` TEXT NOT NULL, `packageLabel` TEXT NOT NULL, `usageTime` INTEGER NOT NULL, `notificationCount` INTEGER NOT NULL, `startupCount` INTEGER NOT NULL, PRIMARY KEY(`packageName`))",
         "fields": [
           {
             "fieldPath": "packageName",
@@ -57,6 +25,18 @@
             "columnName": "usageTime",
             "affinity": "INTEGER",
             "notNull": true
+          },
+          {
+            "fieldPath": "notificationCount",
+            "columnName": "notificationCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "startupCount",
+            "columnName": "startupCount",
+            "affinity": "INTEGER",
+            "notNull": true
           }
         ],
         "primaryKey": {
@@ -67,12 +47,57 @@
         },
         "indices": [],
         "foreignKeys": []
+      },
+      {
+        "tableName": "hourly_data",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`packageName` TEXT NOT NULL, `date` INTEGER NOT NULL, `notificationCount` INTEGER NOT NULL, `usageTime` INTEGER NOT NULL, `startupCount` INTEGER NOT NULL, PRIMARY KEY(`packageName`, `date`))",
+        "fields": [
+          {
+            "fieldPath": "packageName",
+            "columnName": "packageName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "date",
+            "columnName": "date",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "notificationCount",
+            "columnName": "notificationCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "usageTime",
+            "columnName": "usageTime",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "startupCount",
+            "columnName": "startupCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "packageName",
+            "date"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
       }
     ],
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '7d5fc7b44c08e77e819f9b14d15b65e2')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '63b45542e4af3fd7b6471b6a76c76700')"
     ]
   }
 }
