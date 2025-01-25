@@ -36,12 +36,10 @@ fun <T> FlowLinearProgressIndicator(
 ) {
     val scope = rememberCoroutineScope()
     var progress by remember { mutableFloatStateOf(0f) }
-
     LaunchedEffect(progressFlow) {
         scope.launch {
             progressFlow.collect { (value, result) ->
                 progress = value
-                Log.d("FlowLinearProgress", "Progress: $value")
                 result?.let {
                     onFinished(result)
                 }

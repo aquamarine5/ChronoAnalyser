@@ -6,11 +6,9 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.drawable.AdaptiveIconDrawable
 import android.graphics.drawable.BitmapDrawable
-import android.os.Build
 import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,7 +17,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LinearProgressIndicator
@@ -29,9 +26,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults.topAppBarColors
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -44,7 +39,10 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.aquamarine5.brainspark.chronoanalyser.data.ChronoDatabase
+import org.aquamarine5.brainspark.chronoanalyser.data.entity.ChronoAppEntity
 import java.util.Locale
 
 class ChronoMainCompose(
@@ -56,7 +54,7 @@ class ChronoMainCompose(
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text("Chrono Analyser") },
+                    title = { Text("ChronoAnalyser") },
                     modifier = Modifier.fillMaxWidth(),
                     colors = topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -78,17 +76,15 @@ class ChronoMainCompose(
     @Composable
     fun StartupPage() {
         var isInstalled by remember { mutableStateOf(false) }
-        var loadUsageData by remember { mutableStateOf<Map<String, Long>?>(null) }
 
         if (isInstalled) {
-            AnalysisPage(loadUsageData!!)
+            AnalysisPage()
             Text("11")
         } else {
             FlowLinearProgressIndicator(
-                ChronoUsageAnalyser.loadUsageByEventFlow(context)
+                ChronoUsageAnalyser.updateUsageByEventFlow(context)
             ) { result ->
-                loadUsageData = result
-                Log.i("ChronoMainCompose", "Usage data loaded: ${result}")
+                Log.i("ChronoMainCompose", "Usage data loaded: $result")
                 isInstalled = true
             }
             Text("22")
@@ -96,47 +92,66 @@ class ChronoMainCompose(
     }
 
     @Composable
-    fun AnalysisPage(loadUsageData: Map<String, Long>) {
-        val maxUsageTime = loadUsageData.values.maxOrNull() ?: 0L
-        val sortedUsageData = loadUsageData.toList().sortedByDescending { it.second }
+    fun AnalysisPage() {
+        val scope = rememberCoroutineScope()
+        var loadUsageData by remember { mutableStateOf<List<ChronoAppEntity>>(emptyList()) }
 
+        LaunchedEffect(Unit) {
+            scope.launch {
+                loadUsageData = withContext(Dispatchers.IO) {
+                    ChronoDatabase.getInstance(context).chronoAppDAO().getAllApps()
+                }
+            }
+        }
+        val maxUsageTime = loadUsageData.maxOfOrNull { it.usageTime } ?: 1
+        val sortedUsageData = loadUsageData.sortedByDescending {
+            it.usageTime
+        }
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(16.dp)
         ) {
-            itemsIndexed(sortedUsageData) { index,(packageName, usageTime) ->
-                val appName = getAppName(context, packageName)
-                val appIcon = getAppIcon(context, packageName)
-                key(index){
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Image(
-                            bitmap = appIcon,
-                            contentDescription = appName,
-                            modifier = Modifier.size(48.dp)
-                        )
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(text = appName, style = MaterialTheme.typography.bodyLarge)
-                            Text(
-                                text = "Usage time: ${formatTime(usageTime)}",
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                            LinearProgressIndicator(
-                                progress = { usageTime / maxUsageTime.toFloat() },
-                                modifier = Modifier.fillMaxWidth(),
-                                drawStopIndicator = {},
-                                gapSize = (-1).dp
-                            )
-                        }
-                    }
+            itemsIndexed(sortedUsageData) { index, usageData ->
+                key(index) {
+                    AppUsageCard(usageData, maxUsageTime)
                 }
             }
+        }
+    }
+
+    @Composable
+    fun AppUsageCard(appEntity: ChronoAppEntity, maxUsageTime: Long) {
+        with(appEntity) {
+            val appName = getAppName(context, packageName)
+            val appIcon = getAppIcon(context, packageName)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Image(
+                    bitmap = appIcon,
+                    contentDescription = appName,
+                    modifier = Modifier.size(48.dp)
+                )
+                Spacer(modifier = Modifier.width(16.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(text = appName, style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        text = "Usage time: ${formatTime(usageTime)}; Notification count: $notificationCount",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    LinearProgressIndicator(
+                        progress = { usageTime / maxUsageTime.toFloat() },
+                        modifier = Modifier.fillMaxWidth(),
+                        drawStopIndicator = {},
+                        gapSize = (-1).dp
+                    )
+                }
+            }
+
         }
     }
 
@@ -175,7 +190,11 @@ class ChronoMainCompose(
                     drawable.draw(canvas)
                     bitmap.asImageBitmap()
                 }
-                else -> ImageBitmap(1, 1) // Return a default empty bitmap in case of an unsupported drawable type
+
+                else -> ImageBitmap(
+                    1,
+                    1
+                ) // Return a default empty bitmap in case of an unsupported drawable type
             }
         } catch (e: PackageManager.NameNotFoundException) {
             e.printStackTrace()

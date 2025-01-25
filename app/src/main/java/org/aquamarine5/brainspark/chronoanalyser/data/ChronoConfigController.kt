@@ -17,4 +17,11 @@ object ChronoConfigController {
             "lastUpdateTime",
             1172981711250L
         )
+
+    fun lastUpdateDailyDataDate(context: Context) =
+        ChronoConfigProxy(
+            getSharedPreferences(context),
+            "lastUpdateDailyDataDate",
+            0
+        )
 }
