@@ -20,4 +20,16 @@ object DateSQLConverter {
     fun toDateNumber(date: Date): Int {
         return dateFormat.value.format(date).toInt()
     }
+
+    fun toDate(timestamp:Long):Date{
+        return Date.from(Instant.ofEpochMilli(timestamp))
+    }
+
+    fun toDateNumber(timestamp: Long):Int{
+        return dateFormat.value.format(Date.from(Instant.ofEpochMilli(timestamp))).toInt()
+    }
+
+    fun toTimestamp(dateNumber: Int):Long{
+        return Instant.from(dateFormat.value.parse(dateNumber.toString())!!.toInstant()).toEpochMilli()
+    }
 }

@@ -1,8 +1,10 @@
 package org.aquamarine5.brainspark.chronoanalyser
 
+import org.aquamarine5.brainspark.chronoanalyser.data.DateSQLConverter
 import org.junit.Test
 
 import org.junit.Assert.*
+import java.time.Instant
 
 /**
  * Example local unit test, which will execute on the development machine (host).
@@ -12,6 +14,6 @@ import org.junit.Assert.*
 class ExampleUnitTest {
     @Test
     fun addition_isCorrect() {
-        assertEquals(4, 2 + 2)
+        assertEquals(DateSQLConverter.toDateNumber(Instant.now().toEpochMilli()),20250126)
     }
 }

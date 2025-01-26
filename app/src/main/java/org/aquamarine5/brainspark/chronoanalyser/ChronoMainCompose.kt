@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -26,9 +27,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults.topAppBarColors
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -38,11 +41,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.aquamarine5.brainspark.chronoanalyser.data.ChronoDatabase
 import org.aquamarine5.brainspark.chronoanalyser.data.entity.ChronoAppEntity
+import org.aquamarine5.brainspark.chronoanalyser.data.entity.ChronoDailyRecordEntity
 import java.util.Locale
 
 class ChronoMainCompose(
@@ -50,7 +55,7 @@ class ChronoMainCompose(
 ) {
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
-    fun DrawMainContent() {
+    fun DrawMainContent(viewModel: ChronoViewModel= viewModel()) {
         Scaffold(
             topBar = {
                 TopAppBar(
@@ -61,6 +66,13 @@ class ChronoMainCompose(
                         titleContentColor = MaterialTheme.colorScheme.primary,
                     )
                 )
+            },
+            bottomBar = {
+                Button(onClick = {
+                    viewModel.analysisType=!viewModel.analysisType
+                }) {
+
+                }
             },
             modifier = Modifier.fillMaxSize()
         ) { innerPadding ->
@@ -74,20 +86,61 @@ class ChronoMainCompose(
 
 
     @Composable
-    fun StartupPage() {
-        var isInstalled by remember { mutableStateOf(false) }
+    fun StartupPage(viewModel: ChronoViewModel=viewModel()) {
+        var isUsageInstalled by remember { mutableStateOf(false)}
+        var isRecordInstalled by remember { mutableStateOf(false)}
+        if (isUsageInstalled and isRecordInstalled) {
+            if(viewModel.analysisType){
+                DailyRecordAnalysisPage()
+            }else{
 
-        if (isInstalled) {
-            AnalysisPage()
-            Text("11")
+                AnalysisPage()
+            }
         } else {
             FlowLinearProgressIndicator(
                 ChronoUsageAnalyser.updateUsageByEventFlow(context)
             ) { result ->
                 Log.i("ChronoMainCompose", "Usage data loaded: $result")
-                isInstalled = true
+                isUsageInstalled = true
+            }
+
+            FlowLinearProgressIndicator(
+                ChronoUsageAnalyser.updateRecordFlow(context)
+            ) {
+                isRecordInstalled=true
             }
             Text("22")
+        }
+    }
+
+    @Composable
+    fun DailyRecordAnalysisPage(){
+        val scope = rememberCoroutineScope()
+        var loadUsageData by remember { mutableStateOf<Map<Int,ChronoDailyRecordEntity>>(
+            mutableMapOf()
+        ) }
+
+        LaunchedEffect(Unit) {
+            scope.launch {
+                loadUsageData = withContext(Dispatchers.IO) {
+                    ChronoDatabase.getInstance(context).chronoDailyDataDAO().getAllDailyData().associateBy { it.dateNumber }
+                }
+            }
+        }
+        val maxUsageTime = loadUsageData.maxOfOrNull { it.value.usageTime } ?: 1
+        val sortedUsageData = loadUsageData.values.sortedByDescending {
+            it.usageTime
+        }
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp)
+        ) {
+            itemsIndexed(sortedUsageData) { index, usageData ->
+                key(index) {
+                    AppUsageCard(usageData, maxUsageTime)
+                }
+            }
         }
     }
 
@@ -115,6 +168,40 @@ class ChronoMainCompose(
             itemsIndexed(sortedUsageData) { index, usageData ->
                 key(index) {
                     AppUsageCard(usageData, maxUsageTime)
+                }
+            }
+        }
+    }
+
+    @Composable
+    fun AppUsageCard(recordEntity: ChronoDailyRecordEntity,maxUsageTime: Long){
+        with(recordEntity){
+            val appName = getAppName(context,packageName)
+            val appIcon = getAppIcon(context,packageName)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Image(
+                    bitmap = appIcon,
+                    contentDescription = appName,
+                    modifier = Modifier.size(48.dp)
+                )
+                Spacer(modifier = Modifier.width(16.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(text = appName, style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        text = "Usage time: ${formatTime(usageTime)}; Notification count: $notificationCount",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    LinearProgressIndicator(
+                        progress = { usageTime / maxUsageTime.toFloat() },
+                        modifier = Modifier.fillMaxWidth(),
+                        drawStopIndicator = {},
+                        gapSize = (-1).dp
+                    )
                 }
             }
         }

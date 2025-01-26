@@ -5,8 +5,9 @@ import android.content.SharedPreferences
 
 object ChronoConfigController {
     private const val SHARED_PREFERENCES_NAME = "ChronoConfig"
-    private val classTag = this::class.java.name
 
+    const val DEFAULT_LAST_UPDATE_RECORD_DATE=0
+    const val DEFAULT_LAST_UPDATE_TIME=1172981711250L
 
     private fun getSharedPreferences(context: Context): SharedPreferences =
         context.getSharedPreferences(SHARED_PREFERENCES_NAME, Context.MODE_PRIVATE)
@@ -15,13 +16,13 @@ object ChronoConfigController {
         ChronoConfigProxy(
             getSharedPreferences(context),
             "lastUpdateTime",
-            1172981711250L
+            DEFAULT_LAST_UPDATE_TIME
         )
 
-    fun lastUpdateDailyDataDate(context: Context) =
+    fun lastUpdateDailyRecordDate(context: Context) =
         ChronoConfigProxy(
             getSharedPreferences(context),
-            "lastUpdateDailyDataDate",
-            0
+            "lastUpdateDailyRecordDate",
+            DEFAULT_LAST_UPDATE_RECORD_DATE
         )
 }

@@ -9,7 +9,7 @@ data class ChronoAppEntity(
     @PrimaryKey
     val packageName: String,
     val packageLabel: String,
-    val usageTime: Long = 0L,
-    val notificationCount: Int = 0,
-    val startupCount: Int = 0
+    var usageTime: Long = 0L,
+    var notificationCount: Int = 0,
+    var startupCount: Int = 0
 )

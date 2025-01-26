@@ -1,6 +1,7 @@
 package org.aquamarine5.brainspark.chronoanalyser
 
 import android.util.Log
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ProgressIndicatorDefaults
@@ -36,6 +37,7 @@ fun <T> FlowLinearProgressIndicator(
 ) {
     val scope = rememberCoroutineScope()
     var progress by remember { mutableFloatStateOf(0f) }
+    val animatedProgress by animateFloatAsState(progress)
     LaunchedEffect(progressFlow) {
         scope.launch {
             progressFlow.collect { (value, result) ->
@@ -48,7 +50,7 @@ fun <T> FlowLinearProgressIndicator(
     }
 
     LinearProgressIndicator(
-        progress = { progress },
+        progress = { animatedProgress },
         modifier,
         color,
         trackColor,

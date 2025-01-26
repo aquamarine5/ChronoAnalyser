@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "63b45542e4af3fd7b6471b6a76c76700",
+    "identityHash": "acc25654a0abdd86e486c74a5d407f77",
     "entities": [
       {
         "tableName": "apps",
@@ -49,8 +49,8 @@
         "foreignKeys": []
       },
       {
-        "tableName": "hourly_data",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`packageName` TEXT NOT NULL, `date` INTEGER NOT NULL, `notificationCount` INTEGER NOT NULL, `usageTime` INTEGER NOT NULL, `startupCount` INTEGER NOT NULL, PRIMARY KEY(`packageName`, `date`))",
+        "tableName": "daily_data",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`packageName` TEXT NOT NULL, `dateNumber` INTEGER NOT NULL, `notificationCount` INTEGER NOT NULL, `usageTime` INTEGER NOT NULL, `startupCount` INTEGER NOT NULL, PRIMARY KEY(`packageName`, `dateNumber`))",
         "fields": [
           {
             "fieldPath": "packageName",
@@ -59,8 +59,8 @@
             "notNull": true
           },
           {
-            "fieldPath": "date",
-            "columnName": "date",
+            "fieldPath": "dateNumber",
+            "columnName": "dateNumber",
             "affinity": "INTEGER",
             "notNull": true
           },
@@ -87,7 +87,7 @@
           "autoGenerate": false,
           "columnNames": [
             "packageName",
-            "date"
+            "dateNumber"
           ]
         },
         "indices": [],
@@ -97,7 +97,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '63b45542e4af3fd7b6471b6a76c76700')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'acc25654a0abdd86e486c74a5d407f77')"
     ]
   }
 }

@@ -7,6 +7,7 @@ import android.content.Context
 
 class ChronoJobService:JobService() {
     override fun onStartJob(params: JobParameters?): Boolean {
+        updateChronoData()
         return false
     }
 
@@ -14,8 +15,7 @@ class ChronoJobService:JobService() {
         return false
     }
 
-    fun updateChronoData(){
-        val usageStatsManager=getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
-
+    private fun updateChronoData(){
+        ChronoUsageAnalyser.updateUsageByEventFlow(this)
     }
 }
