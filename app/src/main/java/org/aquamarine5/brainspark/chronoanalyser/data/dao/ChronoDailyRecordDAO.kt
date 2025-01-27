@@ -13,7 +13,7 @@ interface ChronoDailyRecordDAO {
     fun getAllDailyData(): List<ChronoDailyRecordEntity>
 
     @Query("SELECT * FROM daily_data WHERE packageName = :packageName and dateNumber = :date LIMIT 1")
-    fun getDailyData(packageName: String,date: Date): ChronoDailyRecordEntity?
+    fun getDailyData(packageName: String, date: Int): ChronoDailyRecordEntity?
 
     @Query("SELECT * FROM daily_data WHERE packageName = :packageName")
     fun getAllDailyDataByPackageName(packageName: String): List<ChronoDailyRecordEntity>

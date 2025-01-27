@@ -15,7 +15,6 @@ import org.aquamarine5.brainspark.chronoanalyser.data.ChronoDatabase
 import org.aquamarine5.brainspark.chronoanalyser.data.DateSQLConverter
 import org.aquamarine5.brainspark.chronoanalyser.data.entity.ChronoAppEntity
 import org.aquamarine5.brainspark.chronoanalyser.data.entity.ChronoDailyRecordEntity
-import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -114,7 +113,10 @@ object ChronoUsageAnalyser {
                         recordData.values.forEachIndexed { index, recordValue ->
                             withContext(Dispatchers.IO) {
                                 Log.d(classTag,"${recordValue.packageName} ${recordValue.dateNumber} ${recordValue.usageTime}")
-                                recordDAO.insertDailyData(recordValue)
+                                if(recordDAO.getDailyData(recordValue.packageName,recordValue.dateNumber)!=null)
+                                    Log.w(classTag,"Duplicate record found, ${recordValue.packageName} ${recordValue.dateNumber}")
+                                else
+                                    recordDAO.insertDailyData(recordValue)
                             }
                             emit(FlowResultUtil.progress((index / recordCount) * (eventDate / endDateNumber.toFloat())))
                             yield()
@@ -160,6 +162,7 @@ object ChronoUsageAnalyser {
                 }
                 yield()
             }
+            emit(FlowResultUtil.resolve(true))
 
         }
 
