@@ -22,10 +22,14 @@ interface ChronoDailyRecordDAO {
     fun getAllDailyDataByDate(date: Date): List<ChronoDailyRecordEntity>
 
     @Query("SELECT * FROM daily_data WHERE dateNumber BETWEEN :startDate AND :endDate")
-    fun getAllDailyDataByDateRange(startDate: Date,endDate: Date): List<ChronoDailyRecordEntity>
+    fun getAllDailyDataByDateRange(startDate: Date, endDate: Date): List<ChronoDailyRecordEntity>
 
     @Query("SELECT * FROM daily_data WHERE dateNumber BETWEEN :startDate AND :endDate AND packageName = :packageName")
-    fun getAllDailyDataByDateRangeAndPackageName(startDate: Date,endDate: Date,packageName: String): List<ChronoDailyRecordEntity>
+    fun getAllDailyDataByDateRangeAndPackageName(
+        startDate: Date,
+        endDate: Date,
+        packageName: String
+    ): List<ChronoDailyRecordEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insertDailyData(dailyData: ChronoDailyRecordEntity)

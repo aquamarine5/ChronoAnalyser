@@ -5,7 +5,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 
-class ChronoViewModel:ViewModel() {
+class ChronoViewModel : ViewModel() {
     var analysisType by mutableStateOf(true)
-    var isSetupCalled by mutableStateOf(false)
 }

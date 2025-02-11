@@ -46,6 +46,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.aquamarine5.brainspark.chronoanalyser.data.ChronoConfigController
 import org.aquamarine5.brainspark.chronoanalyser.data.ChronoDatabase
 import org.aquamarine5.brainspark.chronoanalyser.data.entity.ChronoAppEntity
 import org.aquamarine5.brainspark.chronoanalyser.data.entity.ChronoDailyRecordEntity
@@ -83,10 +84,18 @@ class ChronoMainCompose(
                 modifier = Modifier.padding(innerPadding)
             ) {
                 StartupPage()
+                DebugValuePage()
             }
         }
     }
 
+    @Composable
+    fun DebugValuePage(){
+        val lastUpdateAppProxy=ChronoConfigController.lastUpdateTime(context)
+        val lastUpdateRecordProxy=ChronoConfigController.lastUpdateDailyRecordDate(context)
+        Text("Last update app: ${lastUpdateAppProxy.getValue()}")
+        Text("Last update record: ${lastUpdateRecordProxy.getValue()}")
+    }
 
     @Composable
     fun StartupPage(viewModel: ChronoViewModel=viewModel()) {
@@ -94,8 +103,7 @@ class ChronoMainCompose(
         var isRecordInstalled by remember { mutableStateOf(false)}
 
         Log.i(classTag,"Asia uaas")
-        val isSetupFinished by remember { mutableStateOf(isRecordInstalled and isUsageInstalled) }
-        if (isSetupFinished) {
+        if (isUsageInstalled and isRecordInstalled) {
             Log.i(classTag,"Asia uszx")
             if(viewModel.analysisType){
                 DailyRecordAnalysisPage()
@@ -103,12 +111,10 @@ class ChronoMainCompose(
                 AnalysisPage()
             }
         } else {
-            if(!viewModel.isSetupCalled){
-
-            }
             val updateRecordHandler = remember { ChronoUsageAnalyser.updateRecordFlow(context) }
             val updateUsageHandler= remember{ChronoUsageAnalyser.updateUsageByEventFlow(context)}
-            viewModel.isSetupCalled=true
+            Text(isUsageInstalled.toString())
+            Text(isRecordInstalled.toString())
             FlowLinearProgressIndicator(
                 updateUsageHandler
             ) { result ->
@@ -206,7 +212,7 @@ class ChronoMainCompose(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(text = appName, style = MaterialTheme.typography.bodyLarge)
                     Text(
-                        text = "Usage time: ${formatTime(usageTime)}; Notification count: $notificationCount",
+                        text = "Usage time: ${formatTime(usageTime)}; NC: $notificationCount; SC: $startupCount",
                         style = MaterialTheme.typography.bodySmall
                     )
                     LinearProgressIndicator(
@@ -240,7 +246,7 @@ class ChronoMainCompose(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(text = appName, style = MaterialTheme.typography.bodyLarge)
                     Text(
-                        text = "Usage time: ${formatTime(usageTime)}; Notification count: $notificationCount",
+                        text = "Usage time: ${formatTime(usageTime)}; NC: $notificationCount; SC: $startupCount",
                         style = MaterialTheme.typography.bodySmall
                     )
                     LinearProgressIndicator(

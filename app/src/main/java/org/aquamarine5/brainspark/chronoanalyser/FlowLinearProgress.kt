@@ -48,7 +48,6 @@ fun <T> FlowLinearProgressIndicator(
             }
         }
     }
-
     LinearProgressIndicator(
         progress = { animatedProgress },
         modifier,

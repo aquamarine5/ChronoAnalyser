@@ -15,10 +15,13 @@ import org.aquamarine5.brainspark.chronoanalyser.data.ChronoDatabase
 import org.aquamarine5.brainspark.chronoanalyser.data.DateSQLConverter
 import org.aquamarine5.brainspark.chronoanalyser.data.entity.ChronoAppEntity
 import org.aquamarine5.brainspark.chronoanalyser.data.entity.ChronoDailyRecordEntity
+import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.Date
 import java.util.concurrent.TimeUnit
+import kotlin.time.Duration.Companion.milliseconds
 
 
 object ChronoUsageAnalyser {
@@ -121,10 +124,10 @@ object ChronoUsageAnalyser {
                         val recordCount = recordData.size.toFloat()
                         recordData.values.forEachIndexed { index, recordValue ->
                             withContext(Dispatchers.IO) {
-                                Log.d(
-                                    classTag,
-                                    "${recordValue.packageName} ${recordValue.dateNumber} ${recordValue.usageTime}"
-                                )
+//                                Log.d(
+//                                    classTag,
+//                                    "${recordValue.packageName} ${recordValue.dateNumber} ${recordValue.usageTime}"
+//                                )
                                 if (recordDAO.getDailyData(
                                         recordValue.packageName,
                                         recordValue.dateNumber
@@ -139,7 +142,6 @@ object ChronoUsageAnalyser {
                             }
                             emit(FlowResultUtil.progress((index / recordCount) * (eventDate / endDateNumber.toFloat())))
                             yield()
-
                         }
                         eventUsage.clear()
                         lastPackageName = ""
@@ -181,10 +183,11 @@ object ChronoUsageAnalyser {
                 }
                 yield()
             }
+            lastUpdateDateProxy.setValue(DateSQLConverter.toDateNumber(Date.from(Instant.now()))-1)
             emit(FlowResultUtil.resolve(true))
         }
 
-    fun updateUsageByEventFlow(context: Context): FlowResult<Map<String, Long>> =
+    fun updateUsageByEventFlow(context: Context): FlowResult<Boolean> =
         flow {
             val db = ChronoDatabase.getInstance(context)
             val lastUpdateTimeProxy = ChronoConfigController.lastUpdateTime(context)
@@ -194,7 +197,7 @@ object ChronoUsageAnalyser {
                     classTag,
                     "Skipping update, last update was less than ${System.currentTimeMillis() - lastUpdateTimeValue} millis ago"
                 )
-                emit(FlowResultUtil.resolve(emptyMap()))
+                emit(FlowResultUtil.resolve(false))
                 return@flow
             }
             val appDAO = db.chronoAppDAO()
@@ -281,7 +284,7 @@ object ChronoUsageAnalyser {
             latestTime?.let {
                 lastUpdateTimeProxy.setValue(latestTime)
             }
-            emit(FlowResultUtil.resolve(totalUsage))
+            emit(FlowResultUtil.resolve(true))
         }
 
     private fun getAppName(context: Context, packageName: String): String {
