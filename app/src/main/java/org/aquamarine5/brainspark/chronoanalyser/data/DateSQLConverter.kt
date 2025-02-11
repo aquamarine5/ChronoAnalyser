@@ -29,6 +29,8 @@ object DateSQLConverter {
         return dateFormat.value.format(Date.from(Instant.ofEpochMilli(timestamp))).toInt()
     }
 
+
+
     fun toTimestamp(dateNumber: Int):Long{
         return Instant.from(dateFormat.value.parse(dateNumber.toString())!!.toInstant()).toEpochMilli()
     }

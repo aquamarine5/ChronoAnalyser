@@ -7,4 +7,5 @@ import androidx.lifecycle.ViewModel
 
 class ChronoViewModel:ViewModel() {
     var analysisType by mutableStateOf(true)
+    var isSetupCalled by mutableStateOf(false)
 }

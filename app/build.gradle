@@ -4,6 +4,7 @@ plugins {
     id 'com.google.devtools.ksp'
     id 'androidx.room'
     alias(libs.plugins.kotlin.compose)
+    id "io.sentry.android.gradle" version "5.1.0"
 }
 room {
     schemaDirectory "$projectDir/schemas"

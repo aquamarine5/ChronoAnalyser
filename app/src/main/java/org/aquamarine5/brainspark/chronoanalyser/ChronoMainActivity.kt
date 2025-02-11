@@ -48,11 +48,3 @@ class MainActivity : ComponentActivity() {
         jobScheduler.schedule(jobInfo)
     }
 }
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    ChronoAnalyserTheme {
-
-    }
-}

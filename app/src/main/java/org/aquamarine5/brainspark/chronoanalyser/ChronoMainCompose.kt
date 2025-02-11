@@ -35,6 +35,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,6 +54,8 @@ import java.util.Locale
 class ChronoMainCompose(
     private val context: Context
 ) {
+    private val classTag = this::class.simpleName
+
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun DrawMainContent(viewModel: ChronoViewModel= viewModel()) {
@@ -89,25 +92,35 @@ class ChronoMainCompose(
     fun StartupPage(viewModel: ChronoViewModel=viewModel()) {
         var isUsageInstalled by remember { mutableStateOf(false)}
         var isRecordInstalled by remember { mutableStateOf(false)}
-        if (isUsageInstalled and isRecordInstalled) {
+
+        Log.i(classTag,"Asia uaas")
+        val isSetupFinished by remember { mutableStateOf(isRecordInstalled and isUsageInstalled) }
+        if (isSetupFinished) {
+            Log.i(classTag,"Asia uszx")
             if(viewModel.analysisType){
                 DailyRecordAnalysisPage()
             }else{
-
                 AnalysisPage()
             }
         } else {
+            if(!viewModel.isSetupCalled){
+
+            }
+            val updateRecordHandler = remember { ChronoUsageAnalyser.updateRecordFlow(context) }
+            val updateUsageHandler= remember{ChronoUsageAnalyser.updateUsageByEventFlow(context)}
+            viewModel.isSetupCalled=true
             FlowLinearProgressIndicator(
-                ChronoUsageAnalyser.updateUsageByEventFlow(context)
+                updateUsageHandler
             ) { result ->
                 Log.i("ChronoMainCompose", "Usage data loaded: $result")
+                Log.i(classTag,"Asia us")
                 isUsageInstalled = true
             }
-
             FlowLinearProgressIndicator(
-                ChronoUsageAnalyser.updateRecordFlow(context)
+                updateRecordHandler
             ) {
                 isRecordInstalled=true
+                Log.i(classTag,"Asia usx")
             }
             Text("22")
         }
@@ -289,4 +302,3 @@ class ChronoMainCompose(
         }
     }
 }
-

@@ -24,6 +24,8 @@ import java.util.concurrent.TimeUnit
 object ChronoUsageAnalyser {
     private val classTag = this::class.simpleName
 
+    private const val SKIP_UPDATE_MIN_INTERVAL = 60000
+
     fun updateUsageByStatsFlow(context: Context): FlowResult<Map<String, Long>> =
         flow {
             val outputData = mutableMapOf<String, Long>()
@@ -51,9 +53,19 @@ object ChronoUsageAnalyser {
     fun updateRecordFlow(context: Context): FlowResult<Boolean> =
         flow {
             val db = ChronoDatabase.getInstance(context)
+            val recordDAO = db.chronoDailyDataDAO()
             val lastUpdateDateProxy = ChronoConfigController.lastUpdateDailyRecordDate(context)
             val lastUpdateDateValue = lastUpdateDateProxy.getValue()
+            if (System.currentTimeMillis() - lastUpdateDateValue < SKIP_UPDATE_MIN_INTERVAL) {
+                Log.w(
+                    classTag,
+                    "Skipping update, last update was less than ${System.currentTimeMillis() - lastUpdateDateValue} millis ago"
+                )
+                emit(FlowResultUtil.resolve(false))
+                return@flow
+            }
             val zoneId = ZoneId.systemDefault()
+            Log.w(classTag, zoneId.toString())
             val mUsageStatsManager =
                 context.getSystemService(UsageStatsManager::class.java)
             val lastUpdateDate =
@@ -80,8 +92,7 @@ object ChronoUsageAnalyser {
             val recordData = mutableMapOf<String, ChronoDailyRecordEntity>()
             val eventUsage: MutableMap<String, Long> = HashMap()
             var lastRecordDateNumber = 0
-            while (usageData.hasNextEvent()) {
-                usageData.getNextEvent(usageEvent)
+            while (usageData.getNextEvent(usageEvent)) {
                 val app = usageEvent.packageName
                 val eventDate = DateSQLConverter.toDateNumber(usageEvent.timeStamp)
                 if (lastRecordDateNumber == 0) {
@@ -96,7 +107,6 @@ object ChronoUsageAnalyser {
                             )
                         }.usageTime += usageEvent.timeStamp - pt
 
-
                         if (usageEvent.eventType == UsageEvents.Event.ACTIVITY_PAUSED) {
                             eventUsage[usageEvent.packageName]?.let {
                                 recordData.getOrPut(usageEvent.packageName) {
@@ -108,13 +118,22 @@ object ChronoUsageAnalyser {
                             }
                         }
 
-                        val recordDAO = db.chronoDailyDataDAO()
                         val recordCount = recordData.size.toFloat()
                         recordData.values.forEachIndexed { index, recordValue ->
                             withContext(Dispatchers.IO) {
-                                Log.d(classTag,"${recordValue.packageName} ${recordValue.dateNumber} ${recordValue.usageTime}")
-                                if(recordDAO.getDailyData(recordValue.packageName,recordValue.dateNumber)!=null)
-                                    Log.w(classTag,"Duplicate record found, ${recordValue.packageName} ${recordValue.dateNumber}")
+                                Log.d(
+                                    classTag,
+                                    "${recordValue.packageName} ${recordValue.dateNumber} ${recordValue.usageTime}"
+                                )
+                                if (recordDAO.getDailyData(
+                                        recordValue.packageName,
+                                        recordValue.dateNumber
+                                    ) != null
+                                )
+                                    Log.w(
+                                        classTag,
+                                        "Duplicate record found, ${recordValue.packageName} ${recordValue.dateNumber}"
+                                    )
                                 else
                                     recordDAO.insertDailyData(recordValue)
                             }
@@ -163,19 +182,27 @@ object ChronoUsageAnalyser {
                 yield()
             }
             emit(FlowResultUtil.resolve(true))
-
         }
 
     fun updateUsageByEventFlow(context: Context): FlowResult<Map<String, Long>> =
         flow {
             val db = ChronoDatabase.getInstance(context)
             val lastUpdateTimeProxy = ChronoConfigController.lastUpdateTime(context)
+            val lastUpdateTimeValue = lastUpdateTimeProxy.getValue()
+            if (System.currentTimeMillis() - lastUpdateTimeValue < SKIP_UPDATE_MIN_INTERVAL) {
+                Log.w(
+                    classTag,
+                    "Skipping update, last update was less than ${System.currentTimeMillis() - lastUpdateTimeValue} millis ago"
+                )
+                emit(FlowResultUtil.resolve(emptyMap()))
+                return@flow
+            }
             val appDAO = db.chronoAppDAO()
             val currTime = System.currentTimeMillis()
             val mUsageStatsManager =
-                context.getSystemService(UsageStatsManager::class.java)
+                context.getSystemService(UsageStatsManager::class.java)!!
             val usageEvents =
-                mUsageStatsManager!!.queryEvents(lastUpdateTimeProxy.getValue(), currTime)
+                mUsageStatsManager.queryEvents(lastUpdateTimeValue, currTime)
             val eventUsage: MutableMap<String, Long> = HashMap()
             val totalUsage: MutableMap<String, Long> = HashMap()
             var lastApp = ""
@@ -194,6 +221,7 @@ object ChronoUsageAnalyser {
                 when (currentEvent.eventType) {
                     UsageEvents.Event.ACTIVITY_RESUMED -> {
                         eventUsage[app] = time
+                        addedStartupCount++
                         lastApp = app
                     }
 
@@ -209,7 +237,7 @@ object ChronoUsageAnalyser {
                     }
 
                     12 -> {
-                        Log.w(classTag, "Notification received $app")
+                        //Log.w(classTag, "Notification received $app")
                         addedNotificationCount++
                     }
 
