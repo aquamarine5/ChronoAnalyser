@@ -7,19 +7,58 @@ pluginManagement {
                 includeGroupByRegex("androidx.*")
             }
         }
+        maven {
+            url "https://maven.pkg.github.com/aquamarine5/Stackbricks"
+            credentials {
+                username = "aquamarine5"
+                password = System.getenv("GHP_TOKEN")
+            }
+        }
         mavenCentral()
+        maven {
+            url "https://maven.pkg.github.com/aquamarine5/stackbricks-gradle-plugin"
+            credentials {
+                username = "aquamarine5"
+                password = System.getenv("GHP_TOKEN")
+            }
+        }
         maven { url 'https://maven.aliyun.com/repository/google' }
         maven { url 'https://maven.aliyun.com/repository/public' }
+
         gradlePluginPortal()
+
     }
 }
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
-        google()
+        google {
+            content {
+                includeGroupByRegex("com\\.android.*")
+                includeGroupByRegex("com\\.google.*")
+                includeGroupByRegex("androidx.*")
+            }
+        }
+        maven {
+            url "https://maven.pkg.github.com/aquamarine5/Stackbricks"
+            credentials {
+                username = "aquamarine5"
+                password = System.getenv("GHP_TOKEN")
+            }
+        }
+        mavenCentral()
+        maven {
+            url "https://maven.pkg.github.com/aquamarine5/stackbricks-gradle-plugin"
+            credentials {
+                username = "aquamarine5"
+                password = System.getenv("GHP_TOKEN")
+            }
+        }
         maven { url 'https://maven.aliyun.com/repository/google' }
         maven { url 'https://maven.aliyun.com/repository/public' }
-        mavenCentral()
+
+        gradlePluginPortal()
+
     }
 }
 

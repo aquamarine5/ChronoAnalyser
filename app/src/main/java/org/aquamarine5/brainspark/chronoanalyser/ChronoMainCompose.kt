@@ -27,7 +27,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults.topAppBarColors
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -35,7 +34,6 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,8 +44,11 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.aquamarine5.brainspark.chronoanalyser.components.EnhancedDatePicker
+import org.aquamarine5.brainspark.chronoanalyser.components.FlowLinearProgressIndicator
 import org.aquamarine5.brainspark.chronoanalyser.data.ChronoConfigController
 import org.aquamarine5.brainspark.chronoanalyser.data.ChronoDatabase
+import org.aquamarine5.brainspark.chronoanalyser.data.DateSQLConverter
 import org.aquamarine5.brainspark.chronoanalyser.data.entity.ChronoAppEntity
 import org.aquamarine5.brainspark.chronoanalyser.data.entity.ChronoDailyRecordEntity
 import java.util.Locale
@@ -59,7 +60,7 @@ class ChronoMainCompose(
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
-    fun DrawMainContent(viewModel: ChronoViewModel= viewModel()) {
+    fun DrawMainContent(viewModel: ChronoViewModel = viewModel()) {
         Scaffold(
             topBar = {
                 TopAppBar(
@@ -73,7 +74,7 @@ class ChronoMainCompose(
             },
             bottomBar = {
                 Button(onClick = {
-                    viewModel.analysisType=!viewModel.analysisType
+                    viewModel.analysisType = !viewModel.analysisType
                 }) {
 
                 }
@@ -90,77 +91,94 @@ class ChronoMainCompose(
     }
 
     @Composable
-    fun DebugValuePage(){
-        val lastUpdateAppProxy=ChronoConfigController.lastUpdateTime(context)
-        val lastUpdateRecordProxy=ChronoConfigController.lastUpdateDailyRecordDate(context)
+    fun DebugValuePage() {
+        val lastUpdateAppProxy = ChronoConfigController.lastUpdateTime(context)
+        val lastUpdateRecordProxy = ChronoConfigController.lastUpdateDailyRecordDate(context)
         Text("Last update app: ${lastUpdateAppProxy.getValue()}")
         Text("Last update record: ${lastUpdateRecordProxy.getValue()}")
     }
 
     @Composable
-    fun StartupPage(viewModel: ChronoViewModel=viewModel()) {
-        var isUsageInstalled by remember { mutableStateOf(false)}
-        var isRecordInstalled by remember { mutableStateOf(false)}
+    fun StartupPage(viewModel: ChronoViewModel = viewModel()) {
+        var isUsageInstalled by remember { mutableStateOf(false) }
+        var isRecordInstalled by remember { mutableStateOf(false) }
 
-        Log.i(classTag,"Asia uaas")
+        Log.i(classTag, "Asia uaas")
         if (isUsageInstalled and isRecordInstalled) {
-            Log.i(classTag,"Asia uszx")
-            if(viewModel.analysisType){
+            Log.i(classTag, "Asia uszx")
+            if (viewModel.analysisType) {
                 DailyRecordAnalysisPage()
-            }else{
+            } else {
                 AnalysisPage()
             }
         } else {
             val updateRecordHandler = remember { ChronoUsageAnalyser.updateRecordFlow(context) }
-            val updateUsageHandler= remember{ChronoUsageAnalyser.updateUsageByEventFlow(context)}
+            val updateUsageHandler =
+                remember { ChronoUsageAnalyser.updateUsageByEventFlow(context) }
             Text(isUsageInstalled.toString())
             Text(isRecordInstalled.toString())
             FlowLinearProgressIndicator(
                 updateUsageHandler
             ) { result ->
                 Log.i("ChronoMainCompose", "Usage data loaded: $result")
-                Log.i(classTag,"Asia us")
+                Log.i(classTag, "Asia us")
                 isUsageInstalled = true
             }
             FlowLinearProgressIndicator(
                 updateRecordHandler
             ) {
-                isRecordInstalled=true
-                Log.i(classTag,"Asia usx")
+                isRecordInstalled = true
+                Log.i(classTag, "Asia usx")
             }
             Text("22")
         }
     }
 
     @Composable
-    fun DailyRecordAnalysisPage(){
+    fun DailyRecordAnalysisPage() {
         val scope = rememberCoroutineScope()
-        var loadUsageData by remember { mutableStateOf<Map<Int,ChronoDailyRecordEntity>>(
-            mutableMapOf()
-        ) }
+        var loadUsageData by remember {
+            mutableStateOf<Map<Int, List<ChronoDailyRecordEntity>>>(
+                mutableMapOf()
+            )
+        }
 
         LaunchedEffect(Unit) {
             scope.launch {
                 loadUsageData = withContext(Dispatchers.IO) {
-                    ChronoDatabase.getInstance(context).chronoDailyDataDAO().getAllDailyData().associateBy { it.dateNumber }
+                    ChronoDatabase.getInstance(context).chronoDailyDataDAO().getAllDailyData()
+                        .groupBy { it.dateNumber }
                 }
             }
         }
-        val maxUsageTime = loadUsageData.maxOfOrNull { it.value.usageTime } ?: 1
-        val sortedUsageData = loadUsageData.values.sortedByDescending {
+        val dateRange = LongRange(
+            DateSQLConverter.toTimestamp(loadUsageData.minOfOrNull { it.key } ?: 20070304),
+            DateSQLConverter.toTimestamp(loadUsageData.maxOfOrNull { it.key } ?: 20170615)
+        )
+        var currentDateState by remember {
+            mutableIntStateOf(loadUsageData.maxOfOrNull { it.key } ?: 1)
+        }
+        val sortedUsageData = loadUsageData[currentDateState]?.sortedByDescending {
             it.usageTime
-        }
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp)
-        ) {
-            itemsIndexed(sortedUsageData) { index, usageData ->
-                key(index) {
-                    AppUsageCard(usageData, maxUsageTime)
+        } ?: emptyList()
+        val maxUsageTime = sortedUsageData.getOrNull(0)?.usageTime ?: 0
+        Column {
+            EnhancedDatePicker(dateRange) {
+                currentDateState=it
+            }
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp)
+            ) {
+                itemsIndexed(sortedUsageData) { index, usageData ->
+                    key(index) {
+                        AppUsageCard(usageData, maxUsageTime)
+                    }
                 }
             }
         }
+
     }
 
     @Composable
@@ -193,10 +211,10 @@ class ChronoMainCompose(
     }
 
     @Composable
-    fun AppUsageCard(recordEntity: ChronoDailyRecordEntity,maxUsageTime: Long){
-        with(recordEntity){
-            val appName = getAppName(context,packageName)
-            val appIcon = getAppIcon(context,packageName)
+    fun AppUsageCard(recordEntity: ChronoDailyRecordEntity, maxUsageTime: Long) {
+        with(recordEntity) {
+            val appName = getAppName(context, packageName)
+            val appIcon = getAppIcon(context, packageName)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()

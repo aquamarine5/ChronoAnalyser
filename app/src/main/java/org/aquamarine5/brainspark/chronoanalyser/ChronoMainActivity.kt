@@ -15,13 +15,14 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import com.umeng.analytics.MobclickAgent
 import org.aquamarine5.brainspark.chronoanalyser.data.ChronoDatabase
 import org.aquamarine5.brainspark.chronoanalyser.ui.theme.ChronoAnalyserTheme
 
 class MainActivity : ComponentActivity() {
-    private val permissionController = PermissionController
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        UMengController.init(this)
         enableEdgeToEdge()
         setContent {
             ChronoAnalyserTheme {
@@ -29,11 +30,21 @@ class MainActivity : ComponentActivity() {
                     .DrawMainContent()
             }
         }
-        if (!permissionController.hasUsageStatsPermission(this)) {
-            permissionController.requestUsageStatsPermission(this)
+        if (!PermissionController.hasUsageStatsPermission(this)) {
+            PermissionController.requestUsageStatsPermission(this)
         } else {
             //startScheduledJob()
         }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        MobclickAgent.onKillProcess(this)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        MobclickAgent.onKillProcess(this)
     }
 
     private fun startScheduledJob() {

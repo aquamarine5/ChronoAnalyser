@@ -183,7 +183,7 @@ object ChronoUsageAnalyser {
                 }
                 yield()
             }
-            lastUpdateDateProxy.setValue(DateSQLConverter.toDateNumber(Date.from(Instant.now()))-1)
+            lastUpdateDateProxy.setValue(DateSQLConverter.toDateNumber(Date.from(Instant.now())))
             emit(FlowResultUtil.resolve(true))
         }
 
