@@ -5,7 +5,7 @@ plugins {
     id 'androidx.room'
     alias(libs.plugins.kotlin.compose)
     id "io.sentry.android.gradle" version "5.1.0"
-    id "org.aquamarine5.brainspark.stackbricks-gradle-plugin" version "1.5"
+    id "org.aquamarine5.brainspark.stackbricks-gradle-plugin" version "1.12"
 }
 room {
     schemaDirectory "$projectDir/schemas"
@@ -18,8 +18,8 @@ android {
         applicationId "org.aquamarine5.brainspark.chronoanalyser"
         minSdk 26
         targetSdk 35
-        versionCode 1000250215
-        versionName "1.0-alpha2"
+        versionCode 1000250216
+        versionName "1.0.0-alpha5"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -74,6 +74,8 @@ stackbricksConfig {
 
 dependencies {
     def room_version = "2.6.1"
+    implementation libs.okhttp
+    implementation libs.okio
     implementation libs.stackbricks
     implementation libs.common
     implementation libs.uyumao
