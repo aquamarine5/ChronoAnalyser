@@ -24,6 +24,7 @@ import androidx.compose.material3.TopAppBarDefaults.topAppBarColors
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
@@ -56,6 +57,8 @@ import org.aquamarine5.brainspark.stackbricks.providers.qiniu.QiniuConfiguration
 import org.aquamarine5.brainspark.stackbricks.providers.qiniu.QiniuMessageProvider
 import org.aquamarine5.brainspark.stackbricks.providers.qiniu.QiniuPackageProvider
 import org.aquamarine5.brainspark.stackbricks.rememberStackbricksStatus
+import java.time.LocalDate
+import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 
@@ -72,15 +75,17 @@ fun DrawMainContent(viewModel: ChronoViewModel = viewModel()) {
                     titleContentColor = MaterialTheme.colorScheme.primary,
                 )
             )
-            val okHttpClient=OkHttpClient.Builder()
-                .callTimeout(20,TimeUnit.MINUTES)
-                .readTimeout(20,TimeUnit.MINUTES)
-                .writeTimeout(20,TimeUnit.MINUTES)
+            val okHttpClient = OkHttpClient.Builder()
+                .callTimeout(20, TimeUnit.MINUTES)
+                .readTimeout(20, TimeUnit.MINUTES)
+                .writeTimeout(20, TimeUnit.MINUTES)
                 .build()
             val qiniuConfiguration =
-                QiniuConfiguration("cdn.aquamarine5.fun",
+                QiniuConfiguration(
+                    "cdn.aquamarine5.fun",
                     referer = "http://cdn.aquamarine5.fun/",
-                    okHttpClient = okHttpClient)
+                    okHttpClient = okHttpClient
+                )
             val stackbricksState = rememberStackbricksStatus()
             StackbricksComponent(
                 StackbricksStateService(
@@ -158,7 +163,7 @@ fun StartupPage(viewModel: ChronoViewModel = viewModel()) {
 fun DailyRecordAnalysisPage() {
     val scope = rememberCoroutineScope()
     var loadUsageData by remember {
-        mutableStateOf<Map<Int, List<ChronoDailyRecordEntity>>>(
+        mutableStateOf<Map<LocalDate, List<ChronoDailyRecordEntity>>>(
             mutableMapOf()
         )
     }
@@ -167,38 +172,41 @@ fun DailyRecordAnalysisPage() {
         scope.launch {
             loadUsageData = withContext(Dispatchers.IO) {
                 ChronoDatabase.getInstance(context).chronoDailyDataDAO().getAllDailyData()
-                    .groupBy { it.dateNumber }
+                    .groupBy { DateConverter.toLocalDate(it.dateNumber) }
             }
         }
     }
-    val dateRange = LongRange(
-        DateSQLConverter.toTimestamp(loadUsageData.minOfOrNull { it.key } ?: 20070304),
-        DateSQLConverter.toTimestamp(loadUsageData.maxOfOrNull { it.key } ?: 20170615)
-    )
-    var currentDateState by remember {
-        mutableIntStateOf(loadUsageData.maxOfOrNull { it.key } ?: 1)
-    }
-    val sortedUsageData = loadUsageData[currentDateState]?.sortedByDescending {
-        it.usageTime
-    } ?: emptyList()
-    val maxUsageTime = sortedUsageData.getOrNull(0)?.usageTime ?: 0
-    Column {
-        EnhancedDatePicker(dateRange) {
-            currentDateState = it
+    if (loadUsageData.isNotEmpty()) {
+        val dateRange = LongRange(
+            DateConverter.toTimestampUTC(loadUsageData.minOf { it.key }),
+            DateConverter.toTimestampUTC(loadUsageData.maxOf { it.key })
+        )
+        val currentDateState = remember {
+            mutableStateOf(loadUsageData.maxOf{it.key})
         }
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp)
-        ) {
-            itemsIndexed(sortedUsageData) { index, usageData ->
-                key(index) {
-                    AppUsageCard(usageData, maxUsageTime)
+        var currentDate by currentDateState
+        LaunchedEffect(loadUsageData) {
+            currentDate = loadUsageData.keys.maxOrNull() ?: 20170615
+        }
+        val sortedUsageData = loadUsageData[currentDate]?.sortedByDescending {
+            it.usageTime
+        } ?: emptyList()
+        val maxUsageTime = sortedUsageData.getOrNull(0)?.usageTime ?: 0
+        Column {
+            EnhancedDatePicker(dateRange, currentDateState)
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp)
+            ) {
+                itemsIndexed(sortedUsageData) { index, usageData ->
+                    key(index) {
+                        AppUsageCard(usageData, maxUsageTime)
+                    }
                 }
             }
         }
     }
-
 }
 
 @Composable

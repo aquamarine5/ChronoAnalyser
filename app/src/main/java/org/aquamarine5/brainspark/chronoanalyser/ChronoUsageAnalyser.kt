@@ -282,7 +282,7 @@ object ChronoUsageAnalyser {
                 yield()
             }
             latestTime?.let {
-                lastUpdateTimeProxy.setValue(latestTime)
+                lastUpdateTimeProxy.setValue(it)
             }
             emit(FlowResultUtil.resolve(true))
         }
