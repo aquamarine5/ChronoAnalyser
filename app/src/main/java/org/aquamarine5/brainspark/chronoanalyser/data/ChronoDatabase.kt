@@ -16,9 +16,6 @@ import org.aquamarine5.brainspark.chronoanalyser.data.entity.ChronoDailyRecordEn
         ChronoDailyRecordEntity::class
                ],
     version = 1)
-@TypeConverters(
-    DateSQLConverter::class
-)
 abstract class ChronoDatabase:RoomDatabase() {
     companion object{
         @Volatile

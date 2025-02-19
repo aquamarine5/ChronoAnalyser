@@ -48,7 +48,6 @@ import org.aquamarine5.brainspark.chronoanalyser.components.EnhancedDatePicker
 import org.aquamarine5.brainspark.chronoanalyser.components.FlowLinearProgressIndicator
 import org.aquamarine5.brainspark.chronoanalyser.data.ChronoConfigController
 import org.aquamarine5.brainspark.chronoanalyser.data.ChronoDatabase
-import org.aquamarine5.brainspark.chronoanalyser.data.DateSQLConverter
 import org.aquamarine5.brainspark.chronoanalyser.data.entity.ChronoAppEntity
 import org.aquamarine5.brainspark.chronoanalyser.data.entity.ChronoDailyRecordEntity
 import org.aquamarine5.brainspark.stackbricks.StackbricksComponent
@@ -186,7 +185,7 @@ fun DailyRecordAnalysisPage() {
         }
         var currentDate by currentDateState
         LaunchedEffect(loadUsageData) {
-            currentDate = loadUsageData.keys.maxOrNull() ?: 20170615
+            currentDate = loadUsageData.keys.max()
         }
         val sortedUsageData = loadUsageData[currentDate]?.sortedByDescending {
             it.usageTime

@@ -46,8 +46,6 @@ object DateSQLConverter {
         return dateFormatUTC.value.format(Date(timestamp)).toInt()
     }
 
-
-
     fun toTimestampUTC(dateNumber: Int): Long {
         return LocalDate.parse(dateNumber.toString(), dateFormatterUTC.value)
             .atStartOfDay(ZoneId.of("UTC")).toInstant().toEpochMilli()

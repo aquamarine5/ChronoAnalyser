@@ -29,6 +29,10 @@ object DateConverter {
         return localDate.year * 10000 + localDate.monthValue * 100 + localDate.dayOfMonth
     }
 
+    fun toDateNumber(timestamp: Long, zone: ZoneId = ZoneId.systemDefault()): Int {
+        return toDateNumber(toLocalDate(timestamp, zone))
+    }
+
     fun toDateString(localDate: LocalDate): String {
         return localDate.toString()
     }
@@ -37,7 +41,15 @@ object DateConverter {
         return localDate.atStartOfDay(zone).toInstant().toEpochMilli()
     }
 
+    fun toTimestamp(dateNumber: Int, zone: ZoneId = ZoneId.systemDefault()): Long {
+        return toTimestamp(toLocalDate(dateNumber), zone)
+    }
+
     fun toTimestampUTC(localDate: LocalDate): Long {
         return toTimestamp(localDate, ZoneId.of("UTC"))
+    }
+
+    fun toTimestampUTC(dateNumber: Int): Long {
+        return toTimestamp(dateNumber, ZoneId.of("UTC"))
     }
 }

@@ -12,12 +12,12 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.yield
 import org.aquamarine5.brainspark.chronoanalyser.data.ChronoConfigController
 import org.aquamarine5.brainspark.chronoanalyser.data.ChronoDatabase
-import org.aquamarine5.brainspark.chronoanalyser.data.DateSQLConverter
 import org.aquamarine5.brainspark.chronoanalyser.data.entity.ChronoAppEntity
 import org.aquamarine5.brainspark.chronoanalyser.data.entity.ChronoDailyRecordEntity
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Date
 import java.util.concurrent.TimeUnit
@@ -58,7 +58,8 @@ object ChronoUsageAnalyser {
             val db = ChronoDatabase.getInstance(context)
             val recordDAO = db.chronoDailyDataDAO()
             val lastUpdateDateProxy = ChronoConfigController.lastUpdateDailyRecordDate(context)
-            val lastUpdateDateValue = lastUpdateDateProxy.getValue()
+            val lastUpdateDateData = DateConverter.toLocalDate(lastUpdateDateProxy.getValue())
+            val lastUpdateDateValue = DateConverter.toTimestamp(lastUpdateDateData)
             if (System.currentTimeMillis() - lastUpdateDateValue < SKIP_UPDATE_MIN_INTERVAL) {
                 Log.w(
                     classTag,
@@ -67,38 +68,40 @@ object ChronoUsageAnalyser {
                 emit(FlowResultUtil.resolve(false))
                 return@flow
             }
+
             val zoneId = ZoneId.systemDefault()
             Log.w(classTag, zoneId.toString())
             val mUsageStatsManager =
                 context.getSystemService(UsageStatsManager::class.java)
             val lastUpdateDate =
-                if (lastUpdateDateValue == ChronoConfigController.DEFAULT_LAST_UPDATE_RECORD_DATE) {
+                if (lastUpdateDateData == ChronoConfigController.DEFAULT_LAST_UPDATE_RECORD_DATE) {
                     val predictedUsageData =
                         mUsageStatsManager.queryEvents(0, System.currentTimeMillis())
                     val predictedCurrentEvent = UsageEvents.Event()
                     if (predictedUsageData.getNextEvent(predictedCurrentEvent)) {
-                        DateSQLConverter.toDateNumber(predictedCurrentEvent.timeStamp) + 1
+                        DateConverter.toLocalDate(predictedCurrentEvent.timeStamp).plusDays(1)
                     } else {
-                        ChronoConfigController.DEFAULT_LAST_UPDATE_RECORD_DATE
+                        throw IllegalStateException("No usage data found")
                     }
                 } else {
-                    lastUpdateDateValue
+                    lastUpdateDateData
                 }
             val startTime =
                 LocalDate.parse(lastUpdateDate.toString(), DateTimeFormatter.ofPattern("yyyyMMdd"))
                     .atStartOfDay(zoneId).toInstant().toEpochMilli()
             val endTime = LocalDate.now().atStartOfDay(zoneId).toInstant().toEpochMilli()
-            val endDateNumber = DateSQLConverter.toDateNumber(endTime)
+            val endDateNumber = DateConverter.toDateNumber(endTime)
             val usageData = mUsageStatsManager.queryEvents(startTime, endTime)
             val usageEvent = UsageEvents.Event()
             var lastPackageName = ""
             val recordData = mutableMapOf<String, ChronoDailyRecordEntity>()
             val eventUsage: MutableMap<String, Long> = HashMap()
-            var lastRecordDateNumber = 0
+            var lastRecordDateNumber: LocalDate? = null
             while (usageData.getNextEvent(usageEvent)) {
                 val app = usageEvent.packageName
-                val eventDate = DateSQLConverter.toDateNumber(usageEvent.timeStamp)
-                if (lastRecordDateNumber == 0) {
+                val eventDate =
+                    DateConverter.toLocalDate(usageEvent.timeStamp)//DateSQLConverter.toDateNumber(usageEvent.timeStamp)
+                if (lastRecordDateNumber == null) {
                     lastRecordDateNumber = eventDate
                 } else if (lastRecordDateNumber != eventDate) {
                     lastRecordDateNumber = eventDate
@@ -115,19 +118,15 @@ object ChronoUsageAnalyser {
                                 recordData.getOrPut(usageEvent.packageName) {
                                     ChronoDailyRecordEntity(
                                         usageEvent.packageName,
-                                        eventDate - 1
+                                        eventDate.minusDays(1)
                                     )
-                                }.usageTime += DateSQLConverter.toTimestamp(eventDate) - it
+                                }.usageTime += DateConverter.toTimestamp(eventDate) - it
                             }
                         }
 
                         val recordCount = recordData.size.toFloat()
                         recordData.values.forEachIndexed { index, recordValue ->
                             withContext(Dispatchers.IO) {
-//                                Log.d(
-//                                    classTag,
-//                                    "${recordValue.packageName} ${recordValue.dateNumber} ${recordValue.usageTime}"
-//                                )
                                 if (recordDAO.getDailyData(
                                         recordValue.packageName,
                                         recordValue.dateNumber
@@ -140,7 +139,13 @@ object ChronoUsageAnalyser {
                                 else
                                     recordDAO.insertDailyData(recordValue)
                             }
-                            emit(FlowResultUtil.progress((index / recordCount) * (eventDate / endDateNumber.toFloat())))
+                            emit(
+                                FlowResultUtil.progress(
+                                    (index / recordCount) * (DateConverter.toDateNumber(
+                                        eventDate
+                                    ) / endDateNumber.toFloat())
+                                )
+                            )
                             yield()
                         }
                         eventUsage.clear()
@@ -155,7 +160,7 @@ object ChronoUsageAnalyser {
                                     usageEvent.packageName, lastRecordDateNumber
                                 )
                             }.usageTime =
-                                usageEvent.timeStamp - DateSQLConverter.toTimestamp(eventDate)
+                                usageEvent.timeStamp - DateConverter.toTimestamp(eventDate)
                         }
                     }
                 } else {
@@ -183,7 +188,7 @@ object ChronoUsageAnalyser {
                 }
                 yield()
             }
-            lastUpdateDateProxy.setValue(DateSQLConverter.toDateNumber(Date.from(Instant.now())))
+            lastUpdateDateProxy.setValue(DateConverter.toDateNumber(LocalDate.now()))
             emit(FlowResultUtil.resolve(true))
         }
 
