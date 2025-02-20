@@ -53,3 +53,19 @@ object DateConverter {
         return toTimestamp(dateNumber, ZoneId.of("UTC"))
     }
 }
+
+fun LocalDate.toTimestampUTC(): Long {
+    return DateConverter.toTimestampUTC(this)
+}
+
+fun LocalDate.toTimestamp(zone: ZoneId = ZoneId.systemDefault()): Long {
+    return DateConverter.toTimestamp(this, zone)
+}
+
+fun LocalDate.toDateNumber():Int{
+    return DateConverter.toDateNumber(this)
+}
+
+fun Instant.toLocalDate(zone: ZoneId = ZoneId.systemDefault()): LocalDate {
+    return DateConverter.toLocalDate(this, zone)
+}
