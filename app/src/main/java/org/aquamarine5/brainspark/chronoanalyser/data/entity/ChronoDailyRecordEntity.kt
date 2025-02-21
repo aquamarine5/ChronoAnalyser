@@ -1,6 +1,7 @@
 package org.aquamarine5.brainspark.chronoanalyser.data.entity
 
 import androidx.room.Entity
+import androidx.room.TypeConverters
 import org.aquamarine5.brainspark.chronoanalyser.DateConverter
 import java.time.LocalDate
 import java.util.Date
@@ -12,22 +13,8 @@ import java.util.Date
 )
 data class ChronoDailyRecordEntity(
     val packageName: String,
-    val dateNumber: Int,
+    val dateNumber: LocalDate,
     var notificationCount: Int = 0,
     var usageTime: Long = 0L,
     var startupCount: Int = 0
-) {
-    constructor(
-        packageName: String,
-        date: LocalDate,
-        notificationCount: Int = 0,
-        usageTime: Long = 0L,
-        startupCount: Int = 0
-    ) : this(
-        packageName,
-        DateConverter.toDateNumber(date),
-        notificationCount,
-        usageTime,
-        startupCount
-    )
-}
+)

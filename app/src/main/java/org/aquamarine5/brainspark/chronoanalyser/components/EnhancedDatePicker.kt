@@ -23,6 +23,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import org.aquamarine5.brainspark.chronoanalyser.DateConverter
+import org.aquamarine5.brainspark.chronoanalyser.toTimestampUTC
 import java.text.SimpleDateFormat
 import java.time.Instant
 import java.time.LocalDate
@@ -44,7 +45,7 @@ fun EnhancedDatePicker(
     var currentDate by currentDateState
     val logTag = "EnhancedDatePicker"
     val selectedDateState = rememberDatePickerState(
-        initialSelectedDateMillis = DateConverter.toTimestampUTC(currentDate),
+        initialSelectedDateMillis = currentDate.toTimestampUTC(),
         selectableDates = object : SelectableDates {
             override fun isSelectableDate(utcTimeMillis: Long): Boolean {
                 return allowedTimeRange.contains(

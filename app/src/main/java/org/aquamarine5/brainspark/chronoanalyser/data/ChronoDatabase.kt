@@ -5,6 +5,7 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import org.aquamarine5.brainspark.chronoanalyser.DateConverter
 import org.aquamarine5.brainspark.chronoanalyser.data.dao.ChronoAppDAO
 import org.aquamarine5.brainspark.chronoanalyser.data.dao.ChronoDailyRecordDAO
 import org.aquamarine5.brainspark.chronoanalyser.data.entity.ChronoAppEntity
@@ -14,10 +15,12 @@ import org.aquamarine5.brainspark.chronoanalyser.data.entity.ChronoDailyRecordEn
     entities = [
         ChronoAppEntity::class,
         ChronoDailyRecordEntity::class
-               ],
-    version = 1)
-abstract class ChronoDatabase:RoomDatabase() {
-    companion object{
+    ],
+    version = 1
+)
+@TypeConverters(DateConverter::class)
+abstract class ChronoDatabase : RoomDatabase() {
+    companion object {
         @Volatile
         private var INSTANCE: ChronoDatabase? = null
         fun getInstance(context: Context): ChronoDatabase {
@@ -36,5 +39,5 @@ abstract class ChronoDatabase:RoomDatabase() {
     }
 
     abstract fun chronoAppDAO(): ChronoAppDAO
-    abstract fun chronoDailyDataDAO():ChronoDailyRecordDAO
+    abstract fun chronoDailyDataDAO(): ChronoDailyRecordDAO
 }

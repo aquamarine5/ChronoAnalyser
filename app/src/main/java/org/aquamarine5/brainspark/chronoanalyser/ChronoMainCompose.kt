@@ -171,7 +171,7 @@ fun DailyRecordAnalysisPage() {
         scope.launch {
             loadUsageData = withContext(Dispatchers.IO) {
                 ChronoDatabase.getInstance(context).chronoDailyDataDAO().getAllDailyData()
-                    .groupBy { DateConverter.toLocalDate(it.dateNumber) }
+                    .groupBy { it.dateNumber }
             }
         }
     }

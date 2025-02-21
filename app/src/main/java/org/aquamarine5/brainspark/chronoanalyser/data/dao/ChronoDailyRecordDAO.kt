@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import org.aquamarine5.brainspark.chronoanalyser.data.entity.ChronoDailyRecordEntity
+import java.time.LocalDate
 import java.util.Date
 
 @Dao
@@ -13,21 +14,21 @@ interface ChronoDailyRecordDAO {
     fun getAllDailyData(): List<ChronoDailyRecordEntity>
 
     @Query("SELECT * FROM daily_data WHERE packageName = :packageName and dateNumber = :date LIMIT 1")
-    fun getDailyData(packageName: String, date: Int): ChronoDailyRecordEntity?
+    fun getDailyData(packageName: String, date: LocalDate): ChronoDailyRecordEntity?
 
     @Query("SELECT * FROM daily_data WHERE packageName = :packageName")
     fun getAllDailyDataByPackageName(packageName: String): List<ChronoDailyRecordEntity>
 
     @Query("SELECT * FROM daily_data WHERE dateNumber = :date")
-    fun getAllDailyDataByDate(date: Date): List<ChronoDailyRecordEntity>
+    fun getAllDailyDataByDate(date: LocalDate): List<ChronoDailyRecordEntity>
 
     @Query("SELECT * FROM daily_data WHERE dateNumber BETWEEN :startDate AND :endDate")
-    fun getAllDailyDataByDateRange(startDate: Date, endDate: Date): List<ChronoDailyRecordEntity>
+    fun getAllDailyDataByDateRange(startDate: LocalDate, endDate: LocalDate): List<ChronoDailyRecordEntity>
 
     @Query("SELECT * FROM daily_data WHERE dateNumber BETWEEN :startDate AND :endDate AND packageName = :packageName")
     fun getAllDailyDataByDateRangeAndPackageName(
-        startDate: Date,
-        endDate: Date,
+        startDate: LocalDate,
+        endDate: LocalDate,
         packageName: String
     ): List<ChronoDailyRecordEntity>
 
