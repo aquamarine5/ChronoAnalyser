@@ -1,7 +1,6 @@
 package org.aquamarine5.brainspark.chronoanalyser
 
 import android.util.Log
-import android.util.TimeUtils
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -21,25 +20,19 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults.topAppBarColors
-import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.umeng.commonsdk.UMConfigure
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -57,8 +50,6 @@ import org.aquamarine5.brainspark.stackbricks.providers.qiniu.QiniuMessageProvid
 import org.aquamarine5.brainspark.stackbricks.providers.qiniu.QiniuPackageProvider
 import org.aquamarine5.brainspark.stackbricks.rememberStackbricksStatus
 import java.time.LocalDate
-import java.util.Date
-import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -107,8 +98,27 @@ fun DrawMainContent(viewModel: ChronoViewModel = viewModel()) {
         Column(
             modifier = Modifier.padding(innerPadding)
         ) {
-            StartupPage()
-            DebugValuePage()
+            PermissionCheckingPage {
+                StartupPage()
+                DebugValuePage()
+            }
+        }
+    }
+}
+
+@Composable
+fun PermissionCheckingPage(content:@Composable ()->Unit){
+    val permissionState= rememberPermissionState()
+    if(permissionState.state.value){
+        content()
+    }else{
+        Column {
+            Text("Please grant the permission")
+            Button(onClick = {
+                permissionState.requestPermission()
+            }) {
+                Text("Grant")
+            }
         }
     }
 }
@@ -136,7 +146,7 @@ fun StartupPage(viewModel: ChronoViewModel = viewModel()) {
             AnalysisPage()
         }
     } else {
-        val updateRecordHandler = remember { ChronoUsageAnalyser.updateRecordFlow(context) }
+        val updateRecordHandler = remember { ChronoUsageAnalyser.updateDailyRecordFlowV2(context) }
         val updateUsageHandler =
             remember { ChronoUsageAnalyser.updateUsageByEventFlow(context) }
         Text(isUsageInstalled.toString())

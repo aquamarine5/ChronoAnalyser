@@ -13,24 +13,21 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.yield
 import org.aquamarine5.brainspark.chronoanalyser.data.ChronoConfigController
 import org.aquamarine5.brainspark.chronoanalyser.data.ChronoDatabase
+import org.aquamarine5.brainspark.chronoanalyser.data.dao.ChronoDailyRecordDAO
 import org.aquamarine5.brainspark.chronoanalyser.data.entity.ChronoAppEntity
 import org.aquamarine5.brainspark.chronoanalyser.data.entity.ChronoDailyRecordEntity
-import java.time.Instant
 import java.time.LocalDate
-import java.time.ZoneId
-import java.time.ZoneOffset
-import java.time.format.DateTimeFormatter
-import java.util.Date
+import java.time.temporal.ChronoUnit
 import java.util.concurrent.TimeUnit
-import kotlin.time.Duration.Companion.milliseconds
 
 
 object ChronoUsageAnalyser {
-    private val classTag = this::class.simpleName
+    private const val LOGTAG = "ChronoUsageAnalyser"
 
-    private const val SKIP_UPDATE_MIN_INTERVAL = 60000
+    private const val SKIP_UPDATE_MIN_INTERVAL = 60 * 1000
 
-    fun updateUsageByStatsFlow(context: Context): FlowResult<Map<String, Long>> =
+    @Deprecated("Use updateDailyUsageByStatsFlow instead")
+    fun updateDailyUsageByStatsFlow(context: Context): FlowResult<Map<String, Long>> =
         flow {
             val outputData = mutableMapOf<String, Long>()
             val usageStatsManager = context.getSystemService(UsageStatsManager::class.java)
@@ -54,7 +51,147 @@ object ChronoUsageAnalyser {
             emit(FlowResultUtil.resolve(outputData))
         }
 
-    fun updateRecordFlow(context: Context): FlowResult<Boolean> =
+    fun updateDailyRecordFlowV2(context: Context): FlowResult<Boolean> =
+        flow {
+            val recordDAO = ChronoDatabase.getInstance(context).chronoDailyDataDAO()
+            val lastUpdateDateProxy = ChronoConfigController.lastUpdateDailyRecordDate(context)
+            val lastUpdateDate = if (lastUpdateDateProxy.isDefaultValue()) {
+                LocalDate.now().minusDays(7)
+            } else {
+                DateConverter.toLocalDate(lastUpdateDateProxy.getValue())
+            }
+            val lastUpdateDateTimestamp = lastUpdateDate.toTimestampUTC()
+            val timeDelta = System.currentTimeMillis() - lastUpdateDateTimestamp
+            if (timeDelta < SKIP_UPDATE_MIN_INTERVAL) {
+                Log.w(
+                    LOGTAG,
+                    "Skipping update, last update was less than $timeDelta millis ago."
+                )
+                emit(FlowResultUtil.resolve(false))
+                return@flow
+            }
+            val usageManager = context.getSystemService(UsageStatsManager::class.java)
+
+            val startTimestamp = lastUpdateDate.toTimestampUTC()
+            val endTimestamp = LocalDate.now().toTimestampUTC()
+            val dayCount = ChronoUnit.DAYS.between(lastUpdateDate, LocalDate.now()).toFloat()
+            var dayIndex = 0
+            if (startTimestamp == endTimestamp) {
+                Log.w(LOGTAG, "No new data to update")
+                emit(FlowResultUtil.resolve(false))
+                return@flow
+            }
+            val usageData = usageManager.queryEvents(startTimestamp, endTimestamp)
+            val usageEvent = UsageEvents.Event()
+            val recordData = mutableMapOf<String, ChronoDailyRecordEntity>()
+            val eventUsage: MutableMap<String, Long> = HashMap()
+            var lastRecordDate: LocalDate? = null
+            val allowedEventTypes = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                listOf(
+                    UsageEvents.Event.ACTIVITY_RESUMED,
+                    UsageEvents.Event.ACTIVITY_PAUSED
+                )
+            } else {
+                listOf(
+                    UsageEvents.Event.MOVE_TO_BACKGROUND,
+                    UsageEvents.Event.MOVE_TO_FOREGROUND
+                )
+            }
+            while (usageData.getNextEvent(usageEvent)) {
+                if (allowedEventTypes.contains(usageEvent.eventType).not())
+                    continue
+                with(usageEvent) {
+                    val usageDate = DateConverter.toLocalDateUTC(timeStamp)
+                    if (lastRecordDate == null) {
+                        lastRecordDate = usageDate
+                    } else if (lastRecordDate != usageDate) {
+                        val splitDateTimestamp =
+                            DateConverter.toTimestampUTC(DateConverter.toLocalDateUTC(timeStamp))
+                        var nextDayUsageTime: Long? = null
+                        if (eventType == UsageEvents.Event.ACTIVITY_PAUSED) {
+                            eventUsage[packageName]?.let {
+                                recordData.getOrPut(packageName) {
+                                    ChronoDailyRecordEntity(packageName, usageDate.minusDays(1))
+                                }.usageTime += timeStamp - splitDateTimestamp
+                                nextDayUsageTime = it - splitDateTimestamp
+                            }
+                        }
+                        writeAllRecordData(recordDAO, recordData) {
+                            emit(FlowResultUtil.progress((it / dayCount) + dayIndex / dayCount))
+                            yield()
+                        }
+                        dayIndex++
+                        recordData.clear()
+                        eventUsage.clear()
+                        nextDayUsageTime?.let {
+                            recordData.getOrPut(packageName) {
+                                ChronoDailyRecordEntity(packageName, usageDate).apply {
+                                    usageTime = it
+                                }
+                            }
+                        }
+                    } else {
+                        when (usageEvent.eventType) {
+                            UsageEvents.Event.ACTIVITY_RESUMED -> {
+                                eventUsage[packageName] = usageEvent.timeStamp
+                                recordData.getOrPut(packageName) {
+                                    ChronoDailyRecordEntity(
+                                        packageName,
+                                        usageDate
+                                    )
+                                }.startupCount++
+                            }
+
+                            UsageEvents.Event.ACTIVITY_PAUSED -> {
+                                eventUsage[packageName]?.let {
+                                    recordData.getOrPut(packageName) {
+                                        ChronoDailyRecordEntity(packageName, usageDate)
+                                    }.usageTime += usageEvent.timeStamp - it
+                                }
+                                eventUsage.remove(packageName)
+                            }
+
+                            else -> {}
+                        }
+                    }
+                }
+            }
+            eventUsage.forEach{ (packageName, startTimestamp) ->
+                recordData.getOrPut(packageName) {
+                    ChronoDailyRecordEntity(packageName, lastRecordDate!!)
+                }.usageTime += DateConverter.toTimestampUTC(lastRecordDate!!) - startTimestamp
+            }
+            writeAllRecordData(recordDAO, recordData) {
+                emit(FlowResultUtil.progress(it / dayCount + dayIndex / dayCount))
+                yield()
+            }
+            lastUpdateDateProxy.setValue(LocalDate.now().toDateNumber())
+            emit(FlowResultUtil.resolve(true))
+        }
+
+    private suspend fun writeAllRecordData(
+        recordDAO: ChronoDailyRecordDAO,
+        recordData: Map<String, ChronoDailyRecordEntity>,
+        withProgress: suspend (Float) -> Unit
+    ) {
+        val recordCount = recordData.size.toFloat()
+        recordData.values.forEachIndexed { index, recordValue ->
+            withContext(Dispatchers.IO) {
+                if (recordDAO.getDailyData(recordValue.packageName, recordValue.dateNumber) != null)
+                    Log.w(
+                        LOGTAG,
+                        "Duplicate record found, ${recordValue.packageName} ${recordValue.dateNumber}"
+                    )
+                else
+                    recordDAO.insertDailyData(recordValue)
+            }
+            withProgress(index / recordCount)
+            yield()
+        }
+    }
+
+    @Deprecated("Use updateDailyRecordFlow instead")
+    fun updateDailyRecordFlow(context: Context): FlowResult<Boolean> =
         flow {
             val db = ChronoDatabase.getInstance(context)
             val recordDAO = db.chronoDailyDataDAO()
@@ -63,7 +200,7 @@ object ChronoUsageAnalyser {
             val lastUpdateDateValue = DateConverter.toTimestamp(lastUpdateDateData)
             if (System.currentTimeMillis() - lastUpdateDateValue < SKIP_UPDATE_MIN_INTERVAL) {
                 Log.w(
-                    classTag,
+                    LOGTAG,
                     "Skipping update, last update was less than ${System.currentTimeMillis() - lastUpdateDateValue} millis ago"
                 )
                 emit(FlowResultUtil.resolve(false))
@@ -89,7 +226,7 @@ object ChronoUsageAnalyser {
             val endTime = LocalDate.now().toTimestampUTC()
             if (startTime == endTime) {
                 //emit(FlowResultUtil.resolve(false))
-                Log.w(classTag, "No new data to update")
+                Log.w(LOGTAG, "No new data to update")
                 //return@flow
             }
             val endDateNumber = DateConverter.toDateNumberUTC(endTime)
@@ -148,7 +285,7 @@ object ChronoUsageAnalyser {
                                     ) != null
                                 )
                                     Log.w(
-                                        classTag,
+                                        LOGTAG,
                                         "Duplicate record found, ${recordValue.packageName} ${recordValue.dateNumber}"
                                     )
                                 else
@@ -212,7 +349,7 @@ object ChronoUsageAnalyser {
                         ) != null
                     )
                         Log.w(
-                            classTag,
+                            LOGTAG,
                             "Duplicate record found, ${recordValue.packageName} ${recordValue.dateNumber}"
                         )
                     else
@@ -236,7 +373,7 @@ object ChronoUsageAnalyser {
             val lastUpdateTimeValue = lastUpdateTimeProxy.getValue()
             if (System.currentTimeMillis() - lastUpdateTimeValue < SKIP_UPDATE_MIN_INTERVAL) {
                 Log.w(
-                    classTag,
+                    LOGTAG,
                     "Skipping update, last update was less than ${System.currentTimeMillis() - lastUpdateTimeValue} millis ago"
                 )
                 emit(FlowResultUtil.resolve(false))

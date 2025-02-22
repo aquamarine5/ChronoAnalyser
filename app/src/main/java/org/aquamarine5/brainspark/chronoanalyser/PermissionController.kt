@@ -7,8 +7,13 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Process
 import android.provider.Settings
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 
-object PermissionController{
+object PermissionController {
     fun hasUsageStatsPermission(context: Context): Boolean {
         val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
         val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -35,3 +40,25 @@ object PermissionController{
         })
     }
 }
+
+@Composable
+fun rememberPermissionState(): PermissionState {
+    val context = LocalContext.current
+    return remember {
+        PermissionState(
+            permission = android.Manifest.permission.PACKAGE_USAGE_STATS,
+            state = derivedStateOf {
+                PermissionController.hasUsageStatsPermission(context)
+            },
+            requestPermission = {
+                PermissionController.requestUsageStatsPermission(context)
+            }
+        )
+    }
+}
+
+class PermissionState(
+    val permission: String,
+    val state: State<Boolean>,
+    val requestPermission: () -> Unit
+)
