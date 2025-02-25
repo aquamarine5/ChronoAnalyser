@@ -1,7 +1,6 @@
 package org.aquamarine5.brainspark.chronoanalyser
 
 import android.util.Log
-import android.util.TimeUtils
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -21,24 +20,19 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults.topAppBarColors
-import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.umeng.commonsdk.UMConfigure
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -47,7 +41,6 @@ import org.aquamarine5.brainspark.chronoanalyser.components.EnhancedDatePicker
 import org.aquamarine5.brainspark.chronoanalyser.components.FlowLinearProgressIndicator
 import org.aquamarine5.brainspark.chronoanalyser.data.ChronoConfigController
 import org.aquamarine5.brainspark.chronoanalyser.data.ChronoDatabase
-import org.aquamarine5.brainspark.chronoanalyser.data.DateSQLConverter
 import org.aquamarine5.brainspark.chronoanalyser.data.entity.ChronoAppEntity
 import org.aquamarine5.brainspark.chronoanalyser.data.entity.ChronoDailyRecordEntity
 import org.aquamarine5.brainspark.stackbricks.StackbricksComponent
@@ -56,7 +49,7 @@ import org.aquamarine5.brainspark.stackbricks.providers.qiniu.QiniuConfiguration
 import org.aquamarine5.brainspark.stackbricks.providers.qiniu.QiniuMessageProvider
 import org.aquamarine5.brainspark.stackbricks.providers.qiniu.QiniuPackageProvider
 import org.aquamarine5.brainspark.stackbricks.rememberStackbricksStatus
-import java.util.Locale
+import java.time.LocalDate
 import java.util.concurrent.TimeUnit
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -72,15 +65,17 @@ fun DrawMainContent(viewModel: ChronoViewModel = viewModel()) {
                     titleContentColor = MaterialTheme.colorScheme.primary,
                 )
             )
-            val okHttpClient=OkHttpClient.Builder()
-                .callTimeout(20,TimeUnit.MINUTES)
-                .readTimeout(20,TimeUnit.MINUTES)
-                .writeTimeout(20,TimeUnit.MINUTES)
+            val okHttpClient = OkHttpClient.Builder()
+                .callTimeout(20, TimeUnit.MINUTES)
+                .readTimeout(20, TimeUnit.MINUTES)
+                .writeTimeout(20, TimeUnit.MINUTES)
                 .build()
             val qiniuConfiguration =
-                QiniuConfiguration("cdn.aquamarine5.fun",
+                QiniuConfiguration(
+                    "cdn.aquamarine5.fun",
                     referer = "http://cdn.aquamarine5.fun/",
-                    okHttpClient = okHttpClient)
+                    okHttpClient = okHttpClient
+                )
             val stackbricksState = rememberStackbricksStatus()
             StackbricksComponent(
                 StackbricksStateService(
@@ -103,8 +98,27 @@ fun DrawMainContent(viewModel: ChronoViewModel = viewModel()) {
         Column(
             modifier = Modifier.padding(innerPadding)
         ) {
-            StartupPage()
-            DebugValuePage()
+            PermissionCheckingPage {
+                StartupPage()
+                DebugValuePage()
+            }
+        }
+    }
+}
+
+@Composable
+fun PermissionCheckingPage(content:@Composable ()->Unit){
+    val permissionState= rememberPermissionState()
+    if(permissionState.state.value){
+        content()
+    }else{
+        Column {
+            Text("Please grant the permission")
+            Button(onClick = {
+                permissionState.requestPermission()
+            }) {
+                Text("Grant")
+            }
         }
     }
 }
@@ -132,7 +146,7 @@ fun StartupPage(viewModel: ChronoViewModel = viewModel()) {
             AnalysisPage()
         }
     } else {
-        val updateRecordHandler = remember { ChronoUsageAnalyser.updateRecordFlow(context) }
+        val updateRecordHandler = remember { ChronoUsageAnalyser.updateDailyRecordFlowV2(context) }
         val updateUsageHandler =
             remember { ChronoUsageAnalyser.updateUsageByEventFlow(context) }
         Text(isUsageInstalled.toString())
@@ -158,7 +172,7 @@ fun StartupPage(viewModel: ChronoViewModel = viewModel()) {
 fun DailyRecordAnalysisPage() {
     val scope = rememberCoroutineScope()
     var loadUsageData by remember {
-        mutableStateOf<Map<Int, List<ChronoDailyRecordEntity>>>(
+        mutableStateOf<Map<LocalDate, List<ChronoDailyRecordEntity>>>(
             mutableMapOf()
         )
     }
@@ -171,34 +185,37 @@ fun DailyRecordAnalysisPage() {
             }
         }
     }
-    val dateRange = LongRange(
-        DateSQLConverter.toTimestamp(loadUsageData.minOfOrNull { it.key } ?: 20070304),
-        DateSQLConverter.toTimestamp(loadUsageData.maxOfOrNull { it.key } ?: 20170615)
-    )
-    var currentDateState by remember {
-        mutableIntStateOf(loadUsageData.maxOfOrNull { it.key } ?: 1)
-    }
-    val sortedUsageData = loadUsageData[currentDateState]?.sortedByDescending {
-        it.usageTime
-    } ?: emptyList()
-    val maxUsageTime = sortedUsageData.getOrNull(0)?.usageTime ?: 0
-    Column {
-        EnhancedDatePicker(dateRange) {
-            currentDateState = it
+    if (loadUsageData.isNotEmpty()) {
+        val dateRange = LongRange(
+            DateConverter.toTimestampUTC(loadUsageData.minOf { it.key }),
+            DateConverter.toTimestampUTC(loadUsageData.maxOf { it.key })
+        )
+        val currentDateState = remember {
+            mutableStateOf(loadUsageData.maxOf{it.key})
         }
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp)
-        ) {
-            itemsIndexed(sortedUsageData) { index, usageData ->
-                key(index) {
-                    AppUsageCard(usageData, maxUsageTime)
+        var currentDate by currentDateState
+        LaunchedEffect(loadUsageData) {
+            currentDate = loadUsageData.keys.max()
+        }
+        val sortedUsageData = loadUsageData[currentDate]?.sortedByDescending {
+            it.usageTime
+        } ?: emptyList()
+        val maxUsageTime = sortedUsageData.getOrNull(0)?.usageTime ?: 0
+        Column {
+            EnhancedDatePicker(dateRange, currentDateState)
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp)
+            ) {
+                itemsIndexed(sortedUsageData) { index, usageData ->
+                    key(index) {
+                        AppUsageCard(usageData, maxUsageTime)
+                    }
                 }
             }
         }
     }
-
 }
 
 @Composable

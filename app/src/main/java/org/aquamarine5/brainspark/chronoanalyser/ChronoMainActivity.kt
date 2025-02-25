@@ -9,22 +9,19 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import com.umeng.analytics.MobclickAgent
+import org.aquamarine5.brainspark.chronoanalyser.data.ChronoConfigController
 import org.aquamarine5.brainspark.chronoanalyser.ui.theme.ChronoAnalyserTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        ChronoConfigController.lastUpdateDailyRecordDate(this).clear()
         UMHelper.preInit(this)
         enableEdgeToEdge()
         setContent {
             ChronoAnalyserTheme {
                 DrawMainContent()
             }
-        }
-        if (!PermissionController.hasUsageStatsPermission(this)) {
-            PermissionController.requestUsageStatsPermission(this)
-        } else {
-            //startScheduledJob()
         }
     }
 

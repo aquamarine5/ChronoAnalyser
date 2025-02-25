@@ -2,11 +2,13 @@ package org.aquamarine5.brainspark.chronoanalyser.data
 
 import android.content.Context
 import android.content.SharedPreferences
+import org.aquamarine5.brainspark.chronoanalyser.DateConverter
+import java.time.LocalDate
 
 object ChronoConfigController {
     private const val SHARED_PREFERENCES_NAME = "ChronoConfig"
 
-    const val DEFAULT_LAST_UPDATE_RECORD_DATE = 0
+    val DEFAULT_LAST_UPDATE_RECORD_DATE: LocalDate = LocalDate.of(2000,1,1)
     const val DEFAULT_LAST_UPDATE_TIME = 1172981711250L
 
     private fun getSharedPreferences(context: Context): SharedPreferences =
@@ -23,6 +25,6 @@ object ChronoConfigController {
         ChronoConfigProxy(
             getSharedPreferences(context),
             "lastUpdateDailyRecordDate",
-            DEFAULT_LAST_UPDATE_RECORD_DATE
+            DateConverter.toDateNumber(DEFAULT_LAST_UPDATE_RECORD_DATE)
         )
 }

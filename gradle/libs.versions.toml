@@ -14,7 +14,7 @@ lifecycleViewmodelCompose = "2.8.7"
 okhttp = "4.12.0"
 okio = "3.10.2"
 roomRuntime = "2.6.1"
-stackbricks = "2.0.0-beta13"
+stackbricks = "2.0.4"
 uyumao = "1.1.2"
 
 [libraries]
