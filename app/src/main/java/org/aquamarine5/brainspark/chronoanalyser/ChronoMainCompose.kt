@@ -37,7 +37,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
+import org.aquamarine5.brainspark.chronoanalyser.components.AppUsageCard
 import org.aquamarine5.brainspark.chronoanalyser.components.EnhancedDatePicker
+import org.aquamarine5.brainspark.chronoanalyser.components.FilteredLazyColumn
 import org.aquamarine5.brainspark.chronoanalyser.components.FlowLinearProgressIndicator
 import org.aquamarine5.brainspark.chronoanalyser.data.ChronoConfigController
 import org.aquamarine5.brainspark.chronoanalyser.data.ChronoDatabase
@@ -231,89 +233,10 @@ fun AnalysisPage() {
             }
         }
     }
-    val maxUsageTime = loadUsageData.maxOfOrNull { it.usageTime } ?: 1
-    val sortedUsageData = loadUsageData.sortedByDescending {
-        it.usageTime
-    }
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-        itemsIndexed(sortedUsageData) { index, usageData ->
-            key(index) {
-                AppUsageCard(usageData, maxUsageTime)
-            }
-        }
+    if(loadUsageData.isNotEmpty()){
+        FilteredLazyColumn(loadUsageData)
     }
 }
 
-@Composable
-fun AppUsageCard(recordEntity: ChronoDailyRecordEntity, maxUsageTime: Long) {
-    with(recordEntity) {
-        val appName = getAppName(LocalContext.current, packageName)
-        val appIcon = getAppIcon(LocalContext.current, packageName)
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Image(
-                bitmap = appIcon,
-                contentDescription = appName,
-                modifier = Modifier.size(48.dp)
-            )
-            Spacer(modifier = Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(text = appName, style = MaterialTheme.typography.bodyLarge)
-                Text(
-                    text = "Usage time: ${formatTime(usageTime)}; NC: $notificationCount; SC: $startupCount",
-                    style = MaterialTheme.typography.bodySmall
-                )
-                LinearProgressIndicator(
-                    progress = { usageTime / maxUsageTime.toFloat() },
-                    modifier = Modifier.fillMaxWidth(),
-                    drawStopIndicator = {},
-                    gapSize = (-1).dp
-                )
-            }
-        }
-    }
-}
 
-@Composable
-fun AppUsageCard(appEntity: ChronoAppEntity, maxUsageTime: Long) {
-    with(appEntity) {
-        val appName = getAppName(LocalContext.current, packageName)
-        val appIcon = getAppIcon(LocalContext.current, packageName)
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Image(
-                bitmap = appIcon,
-                contentDescription = appName,
-                modifier = Modifier.size(48.dp)
-            )
-            Spacer(modifier = Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(text = appName, style = MaterialTheme.typography.bodyLarge)
-                Text(
-                    text = "Usage time: ${formatTime(usageTime)}; NC: $notificationCount; SC: $startupCount",
-                    style = MaterialTheme.typography.bodySmall
-                )
-                LinearProgressIndicator(
-                    progress = { usageTime / maxUsageTime.toFloat() },
-                    modifier = Modifier.fillMaxWidth(),
-                    drawStopIndicator = {},
-                    gapSize = (-1).dp
-                )
-            }
-        }
-
-    }
-}
 
