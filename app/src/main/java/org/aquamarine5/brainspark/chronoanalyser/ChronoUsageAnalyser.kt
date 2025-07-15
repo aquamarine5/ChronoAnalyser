@@ -229,11 +229,9 @@ object ChronoUsageAnalyser {
                 it.toBuilder()
                     .setLastUpdateDate(LocalDate.now().toDateNumber())
                     .setLastUpdateTime(System.currentTimeMillis())
-                    .setAllUsageTime(datastoreResult.allUsageTime.also {
-                        dailyReports.forEach { report->
-                            it.plus(report.allUsageTime)
-                        }
-                    })
+                    .setAllUsageTime(datastoreResult.allUsageTime +
+                        dailyReports.sumOf { report -> report.allUsageTime }
+                    )
                     .build()
             }
         }
