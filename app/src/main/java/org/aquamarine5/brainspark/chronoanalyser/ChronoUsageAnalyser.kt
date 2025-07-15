@@ -58,6 +58,7 @@ object ChronoUsageAnalyser {
                             launchCount = 0
                         )).apply {
                             usageTime += timeDiff
+                            launchCount++
                         }
                     }
 
@@ -70,17 +71,17 @@ object ChronoUsageAnalyser {
                         continue
                     }
                     eventUsage[usageEvent.packageName] = usageEvent.timeStamp
-                    dailyUsageData.compute(usageEvent.packageName) { packageName, data ->
-                        (data ?: ChronoDailyUsageEntity(
-                            packageName = packageName,
-                            dateNumber = date,
-                            usageTime = 0L,
-                            notificationCount = 0,
-                            launchCount = 0
-                        )).apply {
-                            launchCount++
-                        }
-                    }
+//                    dailyUsageData.compute(usageEvent.packageName) { packageName, data ->
+//                        (data ?: ChronoDailyUsageEntity(
+//                            packageName = packageName,
+//                            dateNumber = date,
+//                            usageTime = 0L,
+//                            notificationCount = 0,
+//                            launchCount = 0
+//                        )).apply {
+//                            launchCount++
+//                        }
+//                    }
                 }
 
                 12 -> {

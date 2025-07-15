@@ -118,5 +118,5 @@ dependencies {
     debugImplementation libs.androidx.ui.tooling
     debugImplementation libs.androidx.ui.test.manifest
     implementation(libs.androidx.room.runtime)
-    ksp "androidx.room:room-compiler:2.7.2"
+    ksp libs.androidx.room.compiler
 }

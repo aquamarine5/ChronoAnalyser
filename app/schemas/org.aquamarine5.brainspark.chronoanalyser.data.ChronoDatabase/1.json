@@ -2,55 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "acc25654a0abdd86e486c74a5d407f77",
+    "identityHash": "19d15dd38f2395c40b1510566840d099",
     "entities": [
       {
-        "tableName": "apps",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`packageName` TEXT NOT NULL, `packageLabel` TEXT NOT NULL, `usageTime` INTEGER NOT NULL, `notificationCount` INTEGER NOT NULL, `startupCount` INTEGER NOT NULL, PRIMARY KEY(`packageName`))",
-        "fields": [
-          {
-            "fieldPath": "packageName",
-            "columnName": "packageName",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "packageLabel",
-            "columnName": "packageLabel",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "usageTime",
-            "columnName": "usageTime",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "notificationCount",
-            "columnName": "notificationCount",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "startupCount",
-            "columnName": "startupCount",
-            "affinity": "INTEGER",
-            "notNull": true
-          }
-        ],
-        "primaryKey": {
-          "autoGenerate": false,
-          "columnNames": [
-            "packageName"
-          ]
-        },
-        "indices": [],
-        "foreignKeys": []
-      },
-      {
-        "tableName": "daily_data",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`packageName` TEXT NOT NULL, `dateNumber` INTEGER NOT NULL, `notificationCount` INTEGER NOT NULL, `usageTime` INTEGER NOT NULL, `startupCount` INTEGER NOT NULL, PRIMARY KEY(`packageName`, `dateNumber`))",
+        "tableName": "usage_daily",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`packageName` TEXT NOT NULL, `dateNumber` INTEGER NOT NULL, `notificationCount` INTEGER NOT NULL, `usageTime` INTEGER NOT NULL, `launchCount` INTEGER NOT NULL, PRIMARY KEY(`packageName`, `dateNumber`))",
         "fields": [
           {
             "fieldPath": "packageName",
@@ -77,8 +33,8 @@
             "notNull": true
           },
           {
-            "fieldPath": "startupCount",
-            "columnName": "startupCount",
+            "fieldPath": "launchCount",
+            "columnName": "launchCount",
             "affinity": "INTEGER",
             "notNull": true
           }
@@ -89,15 +45,90 @@
             "packageName",
             "dateNumber"
           ]
-        },
-        "indices": [],
-        "foreignKeys": []
+        }
+      },
+      {
+        "tableName": "usage_apps",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`packageName` TEXT NOT NULL, `packageLabel` TEXT NOT NULL, `usageTime` INTEGER NOT NULL, `launchCount` INTEGER NOT NULL, `notificationCount` INTEGER NOT NULL, PRIMARY KEY(`packageName`))",
+        "fields": [
+          {
+            "fieldPath": "packageName",
+            "columnName": "packageName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "packageLabel",
+            "columnName": "packageLabel",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "usageTime",
+            "columnName": "usageTime",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "launchCount",
+            "columnName": "launchCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "notificationCount",
+            "columnName": "notificationCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "packageName"
+          ]
+        }
+      },
+      {
+        "tableName": "usage_daily_report",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`dateNumber` INTEGER NOT NULL, `allUsageTime` INTEGER NOT NULL, `allLaunchCount` INTEGER NOT NULL, `allNotificationCount` INTEGER NOT NULL, PRIMARY KEY(`dateNumber`))",
+        "fields": [
+          {
+            "fieldPath": "dateNumber",
+            "columnName": "dateNumber",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "allUsageTime",
+            "columnName": "allUsageTime",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "allLaunchCount",
+            "columnName": "allLaunchCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "allNotificationCount",
+            "columnName": "allNotificationCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "dateNumber"
+          ]
+        }
       }
     ],
-    "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'acc25654a0abdd86e486c74a5d407f77')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '19d15dd38f2395c40b1510566840d099')"
     ]
   }
 }
