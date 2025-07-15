@@ -2,7 +2,6 @@ package org.aquamarine5.brainspark.chronoanalyser
 
 import androidx.compose.runtime.Stable
 import androidx.room.TypeConverter
-import androidx.room.TypeConverters
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDate.ofEpochDay

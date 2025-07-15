@@ -6,15 +6,18 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import org.aquamarine5.brainspark.chronoanalyser.DateConverter
-import org.aquamarine5.brainspark.chronoanalyser.data.dao.ChronoAppDAO
-import org.aquamarine5.brainspark.chronoanalyser.data.dao.ChronoDailyRecordDAO
-import org.aquamarine5.brainspark.chronoanalyser.data.entity.ChronoAppEntity
-import org.aquamarine5.brainspark.chronoanalyser.data.entity.ChronoDailyRecordEntity
+import org.aquamarine5.brainspark.chronoanalyser.data.dao.ChronoAppUsageDAO
+import org.aquamarine5.brainspark.chronoanalyser.data.dao.ChronoDailyReportDAO
+import org.aquamarine5.brainspark.chronoanalyser.data.dao.ChronoDailyUsageDAO
+import org.aquamarine5.brainspark.chronoanalyser.data.entity.ChronoAppUsageEntity
+import org.aquamarine5.brainspark.chronoanalyser.data.entity.ChronoDailyReportEntity
+import org.aquamarine5.brainspark.chronoanalyser.data.entity.ChronoDailyUsageEntity
 
 @Database(
     entities = [
-        ChronoAppEntity::class,
-        ChronoDailyRecordEntity::class
+        ChronoDailyUsageEntity::class,
+        ChronoAppUsageEntity::class,
+        ChronoDailyReportEntity::class
     ],
     version = 1
 )
@@ -29,7 +32,7 @@ abstract class ChronoDatabase : RoomDatabase() {
                     INSTANCE = Room.databaseBuilder(
                         context.applicationContext,
                         ChronoDatabase::class.java,
-                        "chrono.db"
+                        "chrono_v2.db"
                     )
                         .build()
                 }
@@ -38,6 +41,7 @@ abstract class ChronoDatabase : RoomDatabase() {
         }
     }
 
-    abstract fun chronoAppDAO(): ChronoAppDAO
-    abstract fun chronoDailyDataDAO(): ChronoDailyRecordDAO
+    abstract fun chronoAppUsageDAO(): ChronoAppUsageDAO
+    abstract fun chronoDailyUsageDAO(): ChronoDailyUsageDAO
+    abstract fun chronoDailyReportDAO(): ChronoDailyReportDAO
 }

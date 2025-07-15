@@ -1,4 +1,4 @@
-package org.aquamarine5.brainspark.chronoanalyser.v1
+package org.aquamarine5.brainspark.chronoanalyser
 
 import kotlinx.coroutines.flow.Flow
 

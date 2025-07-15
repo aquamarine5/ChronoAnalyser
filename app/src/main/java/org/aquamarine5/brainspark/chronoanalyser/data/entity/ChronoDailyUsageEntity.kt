@@ -1,4 +1,4 @@
-package org.aquamarine5.brainspark.chronoanalyser.v1.data.entity
+package org.aquamarine5.brainspark.chronoanalyser.data.entity
 
 import androidx.room.Entity
 import java.time.LocalDate

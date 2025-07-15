@@ -56,7 +56,7 @@
             android:value="true" />
 
         <activity
-            android:name=".MainActivity"
+            android:name=".ChronoMainActivity"
             android:exported="true"
             android:theme="@style/Theme.ChronoAnalyser">
             <intent-filter>
@@ -68,9 +68,6 @@
 
         </activity>
 
-        <service
-            android:name=".ChronoJobService"
-            android:permission="android.permission.BIND_JOB_SERVICE" />
     </application>
 
 </manifest>

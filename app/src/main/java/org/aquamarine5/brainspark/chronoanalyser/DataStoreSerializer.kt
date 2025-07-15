@@ -1,6 +1,7 @@
-package org.aquamarine5.brainspark.chronoanalyser.v1
+package org.aquamarine5.brainspark.chronoanalyser
 
 import android.content.Context
+import android.util.Log
 import androidx.datastore.core.DataStore
 import androidx.datastore.core.Serializer
 import androidx.datastore.dataStore
@@ -20,10 +21,16 @@ object DataStoreSerializer : Serializer<ChronoAnalyserDatastore> {
             .build()
 
     override suspend fun readFrom(input: InputStream): ChronoAnalyserDatastore {
-        TODO("Not yet implemented")
+        return try {
+            ChronoAnalyserDatastore.parseFrom(input)
+        } catch (e: Exception) {
+            Log.w("DataStoreSerializer", "Failed to read from input stream", e)
+            // If the input stream is empty or cannot be parsed, return the default value
+            defaultValue
+        }
     }
 
     override suspend fun writeTo(t: ChronoAnalyserDatastore, output: OutputStream) {
-        TODO("Not yet implemented")
+        t.writeTo(output)
     }
 }
