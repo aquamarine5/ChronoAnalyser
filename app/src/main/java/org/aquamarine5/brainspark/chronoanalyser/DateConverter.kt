@@ -11,13 +11,13 @@ import java.time.ZoneOffset
 object DateConverter {
     @TypeConverter
     @JvmStatic
-    fun fromLocalDate(date: LocalDate?):Int?{
+    fun fromLocalDate(date: LocalDate?): Int? {
         return date?.toDateNumber()
     }
 
     @TypeConverter
     @JvmStatic
-    fun toLocalDate(dateNumber: Int?):LocalDate?{
+    fun toLocalDate(dateNumber: Int?): LocalDate? {
         return dateNumber?.let { return@let toLocalDate(it) }
     }
 
@@ -28,7 +28,7 @@ object DateConverter {
         return toLocalDate(instant, offset)
     }
 
-    fun toLocalDate(instant: Instant,zoneOffset: ZoneOffset):LocalDate{
+    fun toLocalDate(instant: Instant, zoneOffset: ZoneOffset): LocalDate {
         val localSecond = instant.epochSecond + zoneOffset.totalSeconds
         val localEpochDay = Math.floorDiv(localSecond, 60 * 60 * 24)
         return ofEpochDay(localEpochDay)
@@ -72,8 +72,8 @@ object DateConverter {
         return toTimestamp(toLocalDate(dateNumber), zone)
     }
 
-    fun toTimestamp(dateNumber: Int,zoneOffset: ZoneOffset):Long{
-        return toTimestamp(toLocalDate(dateNumber),zoneOffset)
+    fun toTimestamp(dateNumber: Int, zoneOffset: ZoneOffset): Long {
+        return toTimestamp(toLocalDate(dateNumber), zoneOffset)
     }
 
     @Stable
@@ -101,7 +101,7 @@ fun LocalDate.toTimestamp(zone: ZoneId = ZoneId.systemDefault()): Long {
 }
 
 @Stable
-fun LocalDate.toDateNumber():Int{
+fun LocalDate.toDateNumber(): Int {
     return DateConverter.toDateNumber(this)
 }
 

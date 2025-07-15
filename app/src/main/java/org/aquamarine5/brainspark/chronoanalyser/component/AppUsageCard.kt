@@ -16,13 +16,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import org.aquamarine5.brainspark.chronoanalyser.data.entity.ChronoAppUsageEntity
 import org.aquamarine5.brainspark.chronoanalyser.formatTime
 import org.aquamarine5.brainspark.chronoanalyser.getAppIcon
 import org.aquamarine5.brainspark.chronoanalyser.getAppName
-import org.aquamarine5.brainspark.chronoanalyser.data.entity.ChronoAppUsageEntity
 
 @Composable
-fun AppUsageCard(usage: ChronoAppUsageEntity, maxUsageTime:Long){
+fun AppUsageCard(usage: ChronoAppUsageEntity, maxUsageTime: Long) {
     with(usage) {
         val appName = getAppName(LocalContext.current, packageName)
         val appIcon = getAppIcon(LocalContext.current, packageName)

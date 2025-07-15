@@ -40,6 +40,7 @@ fun MainPage() {
             val context = LocalContext.current
             var isLoading by remember { mutableStateOf(true) }
             val progressHandler = remember { ChronoUsageAnalyser.updateUsageData(context) }
+
             if (isLoading) {
                 FlowLinearProgressIndicator(
                     progressHandler,

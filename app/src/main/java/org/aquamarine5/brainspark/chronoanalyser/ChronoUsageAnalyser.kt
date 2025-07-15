@@ -34,7 +34,7 @@ object ChronoUsageAnalyser {
         val usageEvent = UsageEvents.Event()
         val dailyUsageData = mutableMapOf<String, ChronoDailyUsageEntity>()
         val eventUsage: MutableMap<String, Long> = HashMap()
-        val startUsage:MutableList<String> = mutableListOf()
+        val startUsage: MutableList<String> = mutableListOf()
         while (usageData.getNextEvent(usageEvent)) {
             emit(
                 ProgressedFlowUtil.progressResult(
@@ -46,7 +46,7 @@ object ChronoUsageAnalyser {
                     val timeDiff =
                         if (eventUsage.containsKey(usageEvent.packageName)) {
                             usageEvent.timeStamp - eventUsage[usageEvent.packageName]!!
-                        }else{
+                        } else {
                             continue
                         }
                     dailyUsageData.compute(usageEvent.packageName) { packageName, data ->
@@ -66,8 +66,8 @@ object ChronoUsageAnalyser {
                 }
 
                 UsageEvents.Event.ACTIVITY_RESUMED -> {
-                    if (eventUsage.containsKey(usageEvent.packageName)){
-                        eventUsage[usageEvent.packageName]=usageEvent.timeStamp
+                    if (eventUsage.containsKey(usageEvent.packageName)) {
+                        eventUsage[usageEvent.packageName] = usageEvent.timeStamp
                         continue
                     }
                     eventUsage[usageEvent.packageName] = usageEvent.timeStamp
@@ -99,7 +99,7 @@ object ChronoUsageAnalyser {
                 }
             }
         }
-        eventUsage.forEach{ (name, time) ->
+        eventUsage.forEach { (name, time) ->
             dailyUsageData.compute(name) { packageName, data ->
                 (data ?: ChronoDailyUsageEntity(
                     packageName = packageName,
@@ -108,7 +108,7 @@ object ChronoUsageAnalyser {
                     notificationCount = 0,
                     launchCount = 0
                 )).apply {
-                    usageTime += (endTimestamp-time)
+                    usageTime += (endTimestamp - time)
                 }
             }
         }
@@ -174,7 +174,7 @@ object ChronoUsageAnalyser {
                     )
                 }
             }
-            val report= ChronoDailyReportEntity(
+            val report = ChronoDailyReportEntity(
                 dateNumber = data[0].dateNumber,
                 allUsageTime = allUsageTime,
                 allLaunchCount = allLaunchCount,
@@ -188,7 +188,7 @@ object ChronoUsageAnalyser {
                     it.allUsageTime += allUsageTime
                 }.build()
             }
-            withContext(Dispatchers.Main){
+            withContext(Dispatchers.Main) {
                 emit(ProgressedFlowUtil.resolveResult(report))
             }
         }
@@ -205,11 +205,11 @@ object ChronoUsageAnalyser {
                 DateConverter.toLocalDate(datastoreResult.lastUpdateDate)
             }
         val endTime = LocalDate.now().minusDays(1)
-        var nowTime=startTime
-        val timeDelta=endTime.toEpochDay()-startTime.toEpochDay()
-        val dailyReports= mutableListOf<ChronoDailyReportEntity>()
+        var nowTime = startTime
+        val timeDelta = endTime.toEpochDay() - startTime.toEpochDay()
+        val dailyReports = mutableListOf<ChronoDailyReportEntity>()
         while (nowTime <= endTime) {
-            val dayIndex=nowTime.toEpochDay()-startTime.toEpochDay()
+            val dayIndex = nowTime.toEpochDay() - startTime.toEpochDay()
             loadDailyUsageData(context, nowTime).collect { progress ->
                 progress.whenProgress {
                     emit(ProgressedFlowUtil.progress(it * (dayIndex + 1) / (timeDelta)))
@@ -225,13 +225,13 @@ object ChronoUsageAnalyser {
             }
             nowTime = nowTime.plusDays(1)
         }
-        withContext(Dispatchers.IO){
+        withContext(Dispatchers.IO) {
             datastore.updateData {
                 it.toBuilder()
                     .setLastUpdateDate(LocalDate.now().toDateNumber())
                     .setLastUpdateTime(System.currentTimeMillis())
                     .setAllUsageTime(datastoreResult.allUsageTime +
-                        dailyReports.sumOf { report -> report.allUsageTime }
+                            dailyReports.sumOf { report -> report.allUsageTime }
                     )
                     .build()
             }

@@ -22,7 +22,7 @@ import org.aquamarine5.brainspark.chronoanalyser.ProgressedFlow
 import org.aquamarine5.brainspark.chronoanalyser.ProgressedFlowResult
 
 @Composable
-fun  FlowLinearProgressIndicator(
+fun FlowLinearProgressIndicator(
     progressFlow: ProgressedFlow,
     modifier: Modifier = Modifier,
     color: Color = ProgressIndicatorDefaults.linearColor,
@@ -36,10 +36,10 @@ fun  FlowLinearProgressIndicator(
     val animatedProgress by animateFloatAsState(progress)
     LaunchedEffect(progressFlow) {
         scope.launch {
-            withContext(Dispatchers.Main){
+            withContext(Dispatchers.Main) {
                 progressFlow.collect { (value, result) ->
                     progress = value
-                    if(result) {
+                    if (result) {
                         onFinished()
                     }
                 }
@@ -65,7 +65,7 @@ fun <T> FlowLinearProgressIndicator(
     trackColor: Color = ProgressIndicatorDefaults.linearTrackColor,
     strokeCap: StrokeCap = ProgressIndicatorDefaults.LinearStrokeCap,
     gapSize: Dp = (-1).dp,
-    onFinished: (result:T) -> Unit,
+    onFinished: (result: T) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
     var progress by remember { mutableFloatStateOf(0f) }
@@ -74,7 +74,7 @@ fun <T> FlowLinearProgressIndicator(
         scope.launch {
             progressFlow.collect { (value, isFinished, result) ->
                 progress = value
-                if(isFinished) {
+                if (isFinished) {
                     onFinished(result!!)
                 }
             }

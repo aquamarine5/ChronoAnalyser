@@ -11,7 +11,10 @@ import java.io.OutputStream
 
 object DataStoreSerializer : Serializer<ChronoAnalyserDatastore> {
 
-    val Context.datastore: DataStore<ChronoAnalyserDatastore> by dataStore("chrono.pb", DataStoreSerializer)
+    val Context.datastore: DataStore<ChronoAnalyserDatastore> by dataStore(
+        "chrono.pb",
+        DataStoreSerializer
+    )
 
     override val defaultValue: ChronoAnalyserDatastore
         get() = ChronoAnalyserDatastore.newBuilder()

@@ -6,9 +6,9 @@ import androidx.room.PrimaryKey
 @Entity("usage_apps")
 data class ChronoAppUsageEntity(
     @PrimaryKey
-    val packageName:String,
-    val packageLabel:String,
-    var usageTime:Long=0L,
-    var launchCount:Int=0,
-    var notificationCount:Int=0
+    val packageName: String,
+    val packageLabel: String,
+    var usageTime: Long = 0L,
+    var launchCount: Int = 0,
+    var notificationCount: Int = 0
 )
