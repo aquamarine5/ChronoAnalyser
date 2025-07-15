@@ -95,7 +95,6 @@ dependencies {
     implementation libs.androidx.datastore
     implementation  libs.protobuf.javalite
     implementation libs.kotlinx.serialization.json
-    def room_version = "2.6.1"
     implementation libs.okhttp
     implementation libs.okio
     implementation libs.stackbricks
@@ -119,5 +118,5 @@ dependencies {
     debugImplementation libs.androidx.ui.tooling
     debugImplementation libs.androidx.ui.test.manifest
     implementation(libs.androidx.room.runtime)
-    ksp "androidx.room:room-compiler:$room_version"
+    ksp "androidx.room:room-compiler:2.7.2"
 }
