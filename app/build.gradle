@@ -4,6 +4,7 @@ plugins {
     id 'com.google.devtools.ksp'
     id 'androidx.room'
     alias(libs.plugins.kotlin.compose)
+    id("com.google.protobuf") version "0.9.4"
     id "io.sentry.android.gradle" version "5.1.0"
     id "org.aquamarine5.brainspark.stackbricks-gradle-plugin" version "1.12"
 }
@@ -72,7 +73,28 @@ stackbricksConfig {
     }
 }
 
+protobuf {
+    protoc {
+        artifact = "com.google.protobuf:protoc:3.18.0"
+    }
+
+    generateProtoTasks {
+        all().each { task ->
+            task.builtins {
+                java {
+                    option 'lite'
+                }
+            }
+        }
+    }
+}
+
+
 dependencies {
+    implementation libs.androidx.ui.graphics.android
+    implementation libs.androidx.datastore
+    implementation  libs.protobuf.javalite
+    implementation libs.kotlinx.serialization.json
     def room_version = "2.6.1"
     implementation libs.okhttp
     implementation libs.okio
