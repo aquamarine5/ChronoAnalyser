@@ -33,8 +33,7 @@ object ChronoUsageAnalyser {
         val usageData = usageManager.queryEvents(startTimestamp, endTimestamp)
         val usageEvent = UsageEvents.Event()
         val dailyUsageData = mutableMapOf<String, ChronoDailyUsageEntity>()
-        val eventUsage: MutableMap<String, Long> = HashMap()
-        val startUsage: MutableList<String> = mutableListOf()
+        val eventUsage: MutableMap<Pair<String,String>, Long> = HashMap()
         while (usageData.getNextEvent(usageEvent)) {
             emit(
                 ProgressedFlowUtil.progressResult(
@@ -44,8 +43,8 @@ object ChronoUsageAnalyser {
             when (usageEvent.eventType) {
                 UsageEvents.Event.ACTIVITY_PAUSED, UsageEvents.Event.ACTIVITY_STOPPED -> {
                     val timeDiff =
-                        if (eventUsage.containsKey(usageEvent.packageName)) {
-                            usageEvent.timeStamp - eventUsage[usageEvent.packageName]!!
+                        if (eventUsage.containsKey(usageEvent.packageName to usageEvent.className)) {
+                            usageEvent.timeStamp - eventUsage[usageEvent.packageName to usageEvent.className]!!
                         } else {
                             continue
                         }
@@ -58,30 +57,27 @@ object ChronoUsageAnalyser {
                             launchCount = 0
                         )).apply {
                             usageTime += timeDiff
-                            launchCount++
                         }
                     }
 
-                    eventUsage.remove(usageEvent.packageName)
+                    eventUsage.remove(usageEvent.packageName to usageEvent.className)
                 }
 
                 UsageEvents.Event.ACTIVITY_RESUMED -> {
-                    if (eventUsage.containsKey(usageEvent.packageName)) {
-                        eventUsage[usageEvent.packageName] = usageEvent.timeStamp
-                        continue
-                    }
-                    eventUsage[usageEvent.packageName] = usageEvent.timeStamp
-//                    dailyUsageData.compute(usageEvent.packageName) { packageName, data ->
-//                        (data ?: ChronoDailyUsageEntity(
-//                            packageName = packageName,
-//                            dateNumber = date,
-//                            usageTime = 0L,
-//                            notificationCount = 0,
-//                            launchCount = 0
-//                        )).apply {
-//                            launchCount++
-//                        }
-//                    }
+                    if(eventUsage.any { it.key.first==usageEvent.packageName }.not())
+                        dailyUsageData.compute(usageEvent.packageName) { packageName, data ->
+                            (data ?: ChronoDailyUsageEntity(
+                                packageName = packageName,
+                                dateNumber = date,
+                                usageTime = 0L,
+                                notificationCount = 0,
+                                launchCount = 0
+                            )).apply {
+                                launchCount++
+                            }
+                        }
+                    eventUsage[usageEvent.packageName to usageEvent.className] = usageEvent.timeStamp
+
                 }
 
                 12 -> {
@@ -100,7 +96,7 @@ object ChronoUsageAnalyser {
             }
         }
         eventUsage.forEach { (name, time) ->
-            dailyUsageData.compute(name) { packageName, data ->
+            dailyUsageData.compute(name.first) { packageName, data ->
                 (data ?: ChronoDailyUsageEntity(
                     packageName = packageName,
                     dateNumber = date,
@@ -108,7 +104,7 @@ object ChronoUsageAnalyser {
                     notificationCount = 0,
                     launchCount = 0
                 )).apply {
-                    usageTime += (endTimestamp - time)
+                    //usageTime += (endTimestamp - time)
                 }
             }
         }
@@ -134,7 +130,6 @@ object ChronoUsageAnalyser {
         val room = ChronoDatabase.getInstance(context)
         val dailyUsageDao = room.chronoDailyUsageDAO()
         val appUsageDao = room.chronoAppUsageDAO()
-
         val dailyReportDAO = room.chronoDailyReportDAO()
         var allUsageTime = 0L
         var allNotificationCount = 0
@@ -206,7 +201,7 @@ object ChronoUsageAnalyser {
             }
         val endTime = LocalDate.now().minusDays(1)
         var nowTime = startTime
-        val timeDelta = endTime.toEpochDay() - startTime.toEpochDay()
+        val timeDelta = endTime.toEpochDay() - startTime.toEpochDay()+1
         val dailyReports = mutableListOf<ChronoDailyReportEntity>()
         while (nowTime <= endTime) {
             val dayIndex = nowTime.toEpochDay() - startTime.toEpochDay()

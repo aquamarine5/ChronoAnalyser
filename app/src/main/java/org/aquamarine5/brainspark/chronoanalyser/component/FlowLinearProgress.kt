@@ -1,6 +1,8 @@
 package org.aquamarine5.brainspark.chronoanalyser.component
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.runtime.Composable
@@ -10,6 +12,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
@@ -46,15 +49,17 @@ fun FlowLinearProgressIndicator(
             }
         }
     }
-    LinearProgressIndicator(
-        progress = { animatedProgress },
-        modifier,
-        color,
-        trackColor,
-        strokeCap,
-        gapSize,
-        drawStopIndicator = {}
-    )
+    Column(verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally){
+        LinearProgressIndicator(
+            progress = { animatedProgress },
+            modifier,
+            color,
+            trackColor,
+            strokeCap,
+            gapSize,
+            drawStopIndicator = {}
+        )
+    }
 }
 
 @Composable
