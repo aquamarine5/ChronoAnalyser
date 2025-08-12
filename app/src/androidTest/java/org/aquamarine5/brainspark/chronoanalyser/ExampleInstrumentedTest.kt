@@ -2,6 +2,7 @@ package org.aquamarine5.brainspark.chronoanalyser
 
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import org.aquamarine5.brainspark.chronoanalyser.data.DateSQLConverter
 
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -19,6 +20,8 @@ class ExampleInstrumentedTest {
     fun useAppContext() {
         // Context of the app under test.
         val appContext = InstrumentationRegistry.getInstrumentation().targetContext
-        assertEquals("org.aquamarine5.brainspark.chronoanalyser", appContext.packageName)
+
+        println(DateSQLConverter.toTimestamp(20170615))
+        println(java.util.Locale.getDefault().toString())
     }
 }

@@ -1,299 +1,236 @@
 package org.aquamarine5.brainspark.chronoanalyser
 
 import android.app.usage.UsageEvents
-import android.app.usage.UsageStats
 import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.pm.PackageManager
-import android.util.Log
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.yield
-import org.aquamarine5.brainspark.chronoanalyser.data.ChronoConfigController
+import org.aquamarine5.brainspark.chronoanalyser.DataStoreSerializer.datastore
+import org.aquamarine5.brainspark.chronoanalyser.ProgressedFlowUtil.whenProgress
+import org.aquamarine5.brainspark.chronoanalyser.ProgressedFlowUtil.whenResolve
 import org.aquamarine5.brainspark.chronoanalyser.data.ChronoDatabase
-import org.aquamarine5.brainspark.chronoanalyser.data.DateSQLConverter
-import org.aquamarine5.brainspark.chronoanalyser.data.entity.ChronoAppEntity
-import org.aquamarine5.brainspark.chronoanalyser.data.entity.ChronoDailyRecordEntity
-import java.time.Instant
+import org.aquamarine5.brainspark.chronoanalyser.data.entity.ChronoAppUsageEntity
+import org.aquamarine5.brainspark.chronoanalyser.data.entity.ChronoDailyReportEntity
+import org.aquamarine5.brainspark.chronoanalyser.data.entity.ChronoDailyUsageEntity
 import java.time.LocalDate
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.util.Date
-import java.util.concurrent.TimeUnit
-import kotlin.time.Duration.Companion.milliseconds
-
+import java.time.ZoneOffset
 
 object ChronoUsageAnalyser {
-    private val classTag = this::class.simpleName
 
-    private const val SKIP_UPDATE_MIN_INTERVAL = 60000
-
-    fun updateUsageByStatsFlow(context: Context): FlowResult<Map<String, Long>> =
-        flow {
-            val outputData = mutableMapOf<String, Long>()
-            val usageStatsManager = context.getSystemService(UsageStatsManager::class.java)
-            val endTime = System.currentTimeMillis()
-            val beginTime = endTime - TimeUnit.DAYS.toMillis(365 * 2)
-            val usageStatsList: List<UsageStats> =
-                usageStatsManager.queryUsageStats(
-                    UsageStatsManager.INTERVAL_YEARLY,
-                    beginTime,
-                    endTime
+    fun loadDailyUsageData(
+        context: Context,
+        date: LocalDate
+    ): ProgressedFlowResult<Pair<Float, List<ChronoDailyUsageEntity>>> = flow {
+        val startTimestamp =
+            date.atStartOfDay(ZoneOffset.systemDefault()).toInstant().toEpochMilli()
+        val endTimestamp =
+            date.plusDays(1).atStartOfDay(ZoneOffset.systemDefault()).toInstant().toEpochMilli()
+        val timeDelta = endTimestamp - startTimestamp.toFloat()
+        val usageManager = context.getSystemService(UsageStatsManager::class.java)
+        val usageData = usageManager.queryEvents(startTimestamp, endTimestamp)
+        val usageEvent = UsageEvents.Event()
+        val dailyUsageData = mutableMapOf<String, ChronoDailyUsageEntity>()
+        val eventUsage: MutableMap<Pair<String,String>, Long> = HashMap()
+        while (usageData.getNextEvent(usageEvent)) {
+            emit(
+                ProgressedFlowUtil.progressResult(
+                    (usageEvent.timeStamp - startTimestamp) / (dailyUsageData.size + timeDelta)
                 )
-            val listCount = usageStatsList.size.toFloat()
-            for ((index, usageStats) in usageStatsList.withIndex()) {
-                val packageName = usageStats.packageName
-                val totalTimeInForeground = usageStats.totalTimeInForeground
-                outputData[packageName] =
-                    outputData.getOrDefault(packageName, 0L) + totalTimeInForeground
-                emit(FlowResultUtil.progress(index / listCount))
-                yield()
-            }
-            emit(FlowResultUtil.resolve(outputData))
-        }
-
-    fun updateRecordFlow(context: Context): FlowResult<Boolean> =
-        flow {
-            val db = ChronoDatabase.getInstance(context)
-            val recordDAO = db.chronoDailyDataDAO()
-            val lastUpdateDateProxy = ChronoConfigController.lastUpdateDailyRecordDate(context)
-            val lastUpdateDateValue = lastUpdateDateProxy.getValue()
-            if (System.currentTimeMillis() - lastUpdateDateValue < SKIP_UPDATE_MIN_INTERVAL) {
-                Log.w(
-                    classTag,
-                    "Skipping update, last update was less than ${System.currentTimeMillis() - lastUpdateDateValue} millis ago"
-                )
-                emit(FlowResultUtil.resolve(false))
-                return@flow
-            }
-            val zoneId = ZoneId.systemDefault()
-            Log.w(classTag, zoneId.toString())
-            val mUsageStatsManager =
-                context.getSystemService(UsageStatsManager::class.java)
-            val lastUpdateDate =
-                if (lastUpdateDateValue == ChronoConfigController.DEFAULT_LAST_UPDATE_RECORD_DATE) {
-                    val predictedUsageData =
-                        mUsageStatsManager.queryEvents(0, System.currentTimeMillis())
-                    val predictedCurrentEvent = UsageEvents.Event()
-                    if (predictedUsageData.getNextEvent(predictedCurrentEvent)) {
-                        DateSQLConverter.toDateNumber(predictedCurrentEvent.timeStamp) + 1
-                    } else {
-                        ChronoConfigController.DEFAULT_LAST_UPDATE_RECORD_DATE
+            )
+            when (usageEvent.eventType) {
+                UsageEvents.Event.ACTIVITY_PAUSED, UsageEvents.Event.ACTIVITY_STOPPED -> {
+                    val timeDiff =
+                        if (eventUsage.containsKey(usageEvent.packageName to usageEvent.className)) {
+                            usageEvent.timeStamp - eventUsage[usageEvent.packageName to usageEvent.className]!!
+                        } else {
+                            continue
+                        }
+                    dailyUsageData.compute(usageEvent.packageName) { packageName, data ->
+                        (data ?: ChronoDailyUsageEntity(
+                            packageName = packageName,
+                            dateNumber = date,
+                            usageTime = 0L,
+                            notificationCount = 0,
+                            launchCount = 0
+                        )).apply {
+                            usageTime += timeDiff
+                        }
                     }
-                } else {
-                    lastUpdateDateValue
-                }
-            val startTime =
-                LocalDate.parse(lastUpdateDate.toString(), DateTimeFormatter.ofPattern("yyyyMMdd"))
-                    .atStartOfDay(zoneId).toInstant().toEpochMilli()
-            val endTime = LocalDate.now().atStartOfDay(zoneId).toInstant().toEpochMilli()
-            val endDateNumber = DateSQLConverter.toDateNumber(endTime)
-            val usageData = mUsageStatsManager.queryEvents(startTime, endTime)
-            val usageEvent = UsageEvents.Event()
-            var lastPackageName = ""
-            val recordData = mutableMapOf<String, ChronoDailyRecordEntity>()
-            val eventUsage: MutableMap<String, Long> = HashMap()
-            var lastRecordDateNumber = 0
-            while (usageData.getNextEvent(usageEvent)) {
-                val app = usageEvent.packageName
-                val eventDate = DateSQLConverter.toDateNumber(usageEvent.timeStamp)
-                if (lastRecordDateNumber == 0) {
-                    lastRecordDateNumber = eventDate
-                } else if (lastRecordDateNumber != eventDate) {
-                    lastRecordDateNumber = eventDate
-                    eventUsage[lastPackageName]?.let { pt ->
-                        recordData.getOrPut(lastPackageName) {
-                            ChronoDailyRecordEntity(
-                                lastPackageName,
-                                eventDate
-                            )
-                        }.usageTime += usageEvent.timeStamp - pt
 
-                        if (usageEvent.eventType == UsageEvents.Event.ACTIVITY_PAUSED) {
-                            eventUsage[usageEvent.packageName]?.let {
-                                recordData.getOrPut(usageEvent.packageName) {
-                                    ChronoDailyRecordEntity(
-                                        usageEvent.packageName,
-                                        eventDate - 1
-                                    )
-                                }.usageTime += DateSQLConverter.toTimestamp(eventDate) - it
+                    eventUsage.remove(usageEvent.packageName to usageEvent.className)
+                }
+
+                UsageEvents.Event.ACTIVITY_RESUMED -> {
+                    if(eventUsage.any { it.key.first==usageEvent.packageName }.not())
+                        dailyUsageData.compute(usageEvent.packageName) { packageName, data ->
+                            (data ?: ChronoDailyUsageEntity(
+                                packageName = packageName,
+                                dateNumber = date,
+                                usageTime = 0L,
+                                notificationCount = 0,
+                                launchCount = 0
+                            )).apply {
+                                launchCount++
                             }
                         }
+                    eventUsage[usageEvent.packageName to usageEvent.className] = usageEvent.timeStamp
 
-                        val recordCount = recordData.size.toFloat()
-                        recordData.values.forEachIndexed { index, recordValue ->
-                            withContext(Dispatchers.IO) {
-//                                Log.d(
-//                                    classTag,
-//                                    "${recordValue.packageName} ${recordValue.dateNumber} ${recordValue.usageTime}"
-//                                )
-                                if (recordDAO.getDailyData(
-                                        recordValue.packageName,
-                                        recordValue.dateNumber
-                                    ) != null
-                                )
-                                    Log.w(
-                                        classTag,
-                                        "Duplicate record found, ${recordValue.packageName} ${recordValue.dateNumber}"
-                                    )
-                                else
-                                    recordDAO.insertDailyData(recordValue)
-                            }
-                            emit(FlowResultUtil.progress((index / recordCount) * (eventDate / endDateNumber.toFloat())))
-                            yield()
-                        }
-                        eventUsage.clear()
-                        lastPackageName = ""
-                        recordData.clear()
-
-                        if (usageEvent.eventType == UsageEvents.Event.ACTIVITY_PAUSED) {
-                            recordData.getOrPut(
-                                usageEvent.packageName
-                            ) {
-                                ChronoDailyRecordEntity(
-                                    usageEvent.packageName, lastRecordDateNumber
-                                )
-                            }.usageTime =
-                                usageEvent.timeStamp - DateSQLConverter.toTimestamp(eventDate)
-                        }
-                    }
-                } else {
-                    when (usageEvent.eventType) {
-                        UsageEvents.Event.ACTIVITY_RESUMED -> {
-                            eventUsage[app] = usageEvent.timeStamp
-                            recordData.getOrPut(app) {
-                                ChronoDailyRecordEntity(
-                                    app,
-                                    eventDate
-                                )
-                            }.startupCount++
-                            lastPackageName = app
-                        }
-
-                        UsageEvents.Event.ACTIVITY_PAUSED -> {
-                            eventUsage[app]?.let {
-                                recordData.getOrPut(app) {
-                                    ChronoDailyRecordEntity(app, eventDate)
-                                }.usageTime += usageEvent.timeStamp - it
-                            }
-                            eventUsage.remove(app)
-                        }
-                    }
                 }
-                yield()
-            }
-            lastUpdateDateProxy.setValue(DateSQLConverter.toDateNumber(Date.from(Instant.now())))
-            emit(FlowResultUtil.resolve(true))
-        }
 
-    fun updateUsageByEventFlow(context: Context): FlowResult<Boolean> =
-        flow {
-            val db = ChronoDatabase.getInstance(context)
-            val lastUpdateTimeProxy = ChronoConfigController.lastUpdateTime(context)
-            val lastUpdateTimeValue = lastUpdateTimeProxy.getValue()
-            if (System.currentTimeMillis() - lastUpdateTimeValue < SKIP_UPDATE_MIN_INTERVAL) {
-                Log.w(
-                    classTag,
-                    "Skipping update, last update was less than ${System.currentTimeMillis() - lastUpdateTimeValue} millis ago"
-                )
-                emit(FlowResultUtil.resolve(false))
-                return@flow
-            }
-            val appDAO = db.chronoAppDAO()
-            val currTime = System.currentTimeMillis()
-            val mUsageStatsManager =
-                context.getSystemService(UsageStatsManager::class.java)!!
-            val usageEvents =
-                mUsageStatsManager.queryEvents(lastUpdateTimeValue, currTime)
-            val eventUsage: MutableMap<String, Long> = HashMap()
-            val totalUsage: MutableMap<String, Long> = HashMap()
-            var lastApp = ""
-            val allCounts = 700f
-            var currentCount = 0
-            var time: Long
-            var addedNotificationCount = 0
-            var addedStartupCount = 0
-            var latestTime: Long? = null
-            while (usageEvents.hasNextEvent()) {
-                val currentEvent = UsageEvents.Event()
-                usageEvents.getNextEvent(currentEvent)
-                val currentProgress = currentCount / allCounts
-                val app = currentEvent.packageName
-                time = currentEvent.timeStamp
-                when (currentEvent.eventType) {
-                    UsageEvents.Event.ACTIVITY_RESUMED -> {
-                        eventUsage[app] = time
-                        addedStartupCount++
-                        lastApp = app
-                    }
-
-                    UsageEvents.Event.ACTIVITY_PAUSED -> {
-                        if (eventUsage.containsKey(app)) {
-                            if (totalUsage.containsKey(app))
-                                totalUsage[app] = totalUsage[app]!! + (time - eventUsage[app]!!)
-                            else
-                                totalUsage[app] = (time - eventUsage[app]!!)
-                        }
-                        eventUsage.remove(app)
-                        latestTime = time
-                    }
-
-                    12 -> {
-                        //Log.w(classTag, "Notification received $app")
-                        addedNotificationCount++
-                    }
-
-                    else -> {
-                        //Log.w(classTag, "Unknown event type: ${currentEvent.eventType}")
-                    }
-                }
-                emit(FlowResultUtil.progress((if (currentProgress <= 1f) currentProgress else 1f) / 2))
-                //Log.d(classTag, "progress: $currentProgress")
-                currentCount++
-                yield()
-            }
-
-            if (eventUsage.containsKey(lastApp)) if (totalUsage.containsKey(lastApp)) totalUsage[lastApp] =
-                totalUsage[lastApp]!! + (System.currentTimeMillis() - eventUsage[lastApp]!!)
-            else totalUsage[lastApp] = (System.currentTimeMillis() - eventUsage[lastApp]!!)
-
-            val usageCount = totalUsage.size.toFloat() + 1
-
-            for ((index, usage) in totalUsage.entries.withIndex()) {
-                withContext(Dispatchers.IO) {
-                    val rawApp = appDAO.getAppByPackageName(usage.key)
-                    if (rawApp == null)
-                        appDAO.upsertApp(
-                            ChronoAppEntity(
-                                usage.key, getAppName(context, usage.key), usage.value
-                            )
-                        )
-                    else {
-                        appDAO.addAppCounts(
-                            usage.key,
-                            usage.value,
-                            addedNotificationCount,
-                            addedStartupCount
+                12 -> {
+                    dailyUsageData.compute(usageEvent.packageName) { packageName, data ->
+                        data?.apply {
+                            notificationCount++
+                        } ?: ChronoDailyUsageEntity(
+                            packageName = packageName,
+                            dateNumber = date,
+                            usageTime = 0L,
+                            notificationCount = 1,
+                            launchCount = 0
                         )
                     }
                 }
-                emit(FlowResultUtil.progress(0.5f + index / usageCount))
-                yield()
             }
-            latestTime?.let {
-                lastUpdateTimeProxy.setValue(latestTime)
-            }
-            emit(FlowResultUtil.resolve(true))
         }
+        eventUsage.forEach { (name, time) ->
+            dailyUsageData.compute(name.first) { packageName, data ->
+                (data ?: ChronoDailyUsageEntity(
+                    packageName = packageName,
+                    dateNumber = date,
+                    usageTime = 0L,
+                    notificationCount = 0,
+                    launchCount = 0
+                )).apply {
+                    //usageTime += (endTimestamp - time)
+                }
+            }
+        }
+        emit(ProgressedFlowUtil.resolveResult(timeDelta to dailyUsageData.values.toList()))
+    }
 
-    private fun getAppName(context: Context, packageName: String): String {
+    fun getApplicationLabel(context: Context, packageName: String): String {
         val packageManager = context.packageManager
         return try {
-            val applicationInfo = packageManager.getApplicationInfo(packageName, 0)
+            val applicationInfo =
+                packageManager.getApplicationInfo(packageName, PackageManager.GET_META_DATA)
             packageManager.getApplicationLabel(applicationInfo).toString()
         } catch (e: PackageManager.NameNotFoundException) {
             packageName
         }
+    }
+
+    fun saveDailyUsageToReport(
+        context: Context,
+        data: List<ChronoDailyUsageEntity>
+    ): ProgressedFlowResult<ChronoDailyReportEntity> = flow {
+        val db = context.datastore
+        val room = ChronoDatabase.getInstance(context)
+        val dailyUsageDao = room.chronoDailyUsageDAO()
+        val appUsageDao = room.chronoAppUsageDAO()
+        val dailyReportDAO = room.chronoDailyReportDAO()
+        var allUsageTime = 0L
+        var allNotificationCount = 0
+        var allLaunchCount = 0
+        withContext(Dispatchers.IO) {
+            val appUsageData = appUsageDao.getAllApps()
+            data.forEachIndexed { index, it ->
+                dailyUsageDao.upsertDailyData(it)
+                allUsageTime += it.usageTime
+                allLaunchCount += it.launchCount
+                allNotificationCount += it.notificationCount
+                withContext(Dispatchers.Main) {
+                    emit(
+                        ProgressedFlowUtil.progressResult(
+                            index.toFloat() / data.size / 2
+                        )
+                    )
+                }
+            }
+            data.forEachIndexed { index, usage ->
+                appUsageDao.upsertApp(
+                    (appUsageData.find { it.packageName == usage.packageName }
+                        ?: ChronoAppUsageEntity(
+                            usage.packageName,
+                            getApplicationLabel(context, usage.packageName)
+                        )).also {
+                        it.usageTime += usage.usageTime
+                        it.notificationCount += usage.notificationCount
+                        it.launchCount += usage.launchCount
+                    }
+                )
+                withContext(Dispatchers.Main) {
+                    emit(
+                        ProgressedFlowUtil.progressResult(
+                            (index + data.size).toFloat() / data.size / 2
+                        )
+                    )
+                }
+            }
+            val report = ChronoDailyReportEntity(
+                dateNumber = data[0].dateNumber,
+                allUsageTime = allUsageTime,
+                allLaunchCount = allLaunchCount,
+                allNotificationCount = allNotificationCount
+            )
+            dailyReportDAO.upsertDailyReport(
+                report
+            )
+            db.updateData { datastore ->
+                datastore.toBuilder().also {
+                    it.allUsageTime += allUsageTime
+                }.build()
+            }
+            withContext(Dispatchers.Main) {
+                emit(ProgressedFlowUtil.resolveResult(report))
+            }
+        }
+
+    }
+
+    fun updateUsageData(context: Context): ProgressedFlow = flow {
+        val datastore = context.datastore
+        val datastoreResult = datastore.data.first()
+        val startTime =
+            if (datastoreResult.lastUpdateDate == 0) {
+                LocalDate.now().minusDays(7)
+            } else {
+                DateConverter.toLocalDate(datastoreResult.lastUpdateDate)
+            }
+        val endTime = LocalDate.now().minusDays(1)
+        var nowTime = startTime
+        val timeDelta = endTime.toEpochDay() - startTime.toEpochDay()+1
+        val dailyReports = mutableListOf<ChronoDailyReportEntity>()
+        while (nowTime <= endTime) {
+            val dayIndex = nowTime.toEpochDay() - startTime.toEpochDay()
+            loadDailyUsageData(context, nowTime).collect { progress ->
+                progress.whenProgress {
+                    emit(ProgressedFlowUtil.progress(it * (dayIndex + 1) / (timeDelta)))
+                }.whenResolve { result ->
+                    saveDailyUsageToReport(context, result.second).collect { dailyProgress ->
+                        dailyProgress.whenProgress {
+                            emit(ProgressedFlowUtil.progress((result.first + it * result.second.size) / (result.first + result.second.size) * (dayIndex + 1) / (timeDelta)))
+                        }.whenResolve {
+                            dailyReports.add(it)
+                        }
+                    }
+                }
+            }
+            nowTime = nowTime.plusDays(1)
+        }
+        withContext(Dispatchers.IO) {
+            datastore.updateData {
+                it.toBuilder()
+                    .setLastUpdateDate(LocalDate.now().toDateNumber())
+                    .setLastUpdateTime(System.currentTimeMillis())
+                    .setAllUsageTime(datastoreResult.allUsageTime +
+                            dailyReports.sumOf { report -> report.allUsageTime }
+                    )
+                    .build()
+            }
+        }
+        emit(ProgressedFlowUtil.resolve())
     }
 }

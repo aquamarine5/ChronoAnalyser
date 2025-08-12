@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+option java_package = "org.aquamarine5.brainspark.chronoanalyser.datastore";
+option java_multiple_files = true;
+
+message ChronoAnalyserDatastore{
+  uint64 lastUpdateTime=1;
+  uint32 lastUpdateDate=2;
+  uint64 allUsageTime=3;
+}

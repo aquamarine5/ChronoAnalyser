@@ -45,7 +45,9 @@
             "packageName",
             "dateNumber"
           ]
-        }
+        },
+        "indices": [],
+        "foreignKeys": []
       },
       {
         "tableName": "usage_apps",
@@ -87,7 +89,9 @@
           "columnNames": [
             "packageName"
           ]
-        }
+        },
+        "indices": [],
+        "foreignKeys": []
       },
       {
         "tableName": "usage_daily_report",
@@ -123,9 +127,12 @@
           "columnNames": [
             "dateNumber"
           ]
-        }
+        },
+        "indices": [],
+        "foreignKeys": []
       }
     ],
+    "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
       "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '19d15dd38f2395c40b1510566840d099')"
